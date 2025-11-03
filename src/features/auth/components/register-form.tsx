@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -98,6 +99,12 @@ export function RegisterForm(): ReactElement {
                     type="button"
                     disabled={isPending}
                   >
+                    <Image
+                      src="/logos/github.svg"
+                      alt="GitHub"
+                      width={20}
+                      height={20}
+                    />
                     Continue with GitHub
                   </Button>
                   <Button
@@ -106,7 +113,13 @@ export function RegisterForm(): ReactElement {
                     type="button"
                     disabled={isPending}
                   >
-                    Continue with GitHub
+                    <Image
+                      src="/logos/google.svg"
+                      alt="Google"
+                      width={20}
+                      height={20}
+                    />
+                    Continue with Google
                   </Button>
                 </div>
                 <div className="grid gap-6">

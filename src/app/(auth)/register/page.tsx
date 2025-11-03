@@ -5,9 +5,5 @@ import { ReactElement } from "react";
 export default async function Register(): Promise<ReactElement> {
   await requireUnauth();
 
-  return (
-    <div>
-      <RegisterForm />
-    </div>
-  );
+  return <RegisterForm />;
 }
