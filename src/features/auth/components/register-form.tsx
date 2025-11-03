@@ -79,6 +79,20 @@ export function RegisterForm(): ReactElement {
     );
   };
 
+  const handleGitHubSignIn = async () => {
+    await authClient.signIn.social({
+      provider: "github",
+      callbackURL: "/",
+    });
+  };
+
+  const handleGoogleSignIn = async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  };
+
   const isPending: boolean = form.formState.isSubmitting;
 
   return (
@@ -98,6 +112,7 @@ export function RegisterForm(): ReactElement {
                     className="w-full"
                     type="button"
                     disabled={isPending}
+                    onClick={handleGitHubSignIn}
                   >
                     <Image
                       src="/logos/github.svg"
@@ -112,6 +127,7 @@ export function RegisterForm(): ReactElement {
                     className="w-full"
                     type="button"
                     disabled={isPending}
+                    onClick={handleGoogleSignIn}
                   >
                     <Image
                       src="/logos/google.svg"
