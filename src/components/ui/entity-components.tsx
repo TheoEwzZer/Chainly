@@ -2,6 +2,7 @@ import { ReactElement, ReactNode } from "react";
 import { Button } from "./button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { Spinner } from "./spinner";
 
 type EntityHeaderProps = {
   title: string;
@@ -36,7 +37,8 @@ export const EntityHeader = ({
       </div>
       {onNew && !newButtonHref && (
         <Button onClick={onNew} disabled={isCreating || disabled} size="sm">
-          <PlusIcon className="size-4" />
+          {isCreating && <Spinner />}
+          {!isCreating && <PlusIcon className="size-4" />}
           {newButtonLabel}
         </Button>
       )}

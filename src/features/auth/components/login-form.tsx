@@ -16,6 +16,7 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { ReactElement } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -153,6 +154,7 @@ export function LoginForm(): ReactElement {
                   )}
                 />
                 <Button type="submit" disabled={isPending} className="w-full">
+                  {isPending && <Spinner />}
                   {isPending ? "Logging in..." : "Login"}
                 </Button>
               </div>
