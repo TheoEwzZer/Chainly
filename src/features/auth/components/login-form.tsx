@@ -5,7 +5,7 @@ import z from "zod";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import {
   Card,
   CardContent,
@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 import { authClient } from "@/lib/auth-client";
-import { ErrorContext } from "better-auth/react";
+import type { ErrorContext } from "better-auth/react";
 import { toast } from "sonner";
 
 const loginSchema = z.object({

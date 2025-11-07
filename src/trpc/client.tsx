@@ -54,7 +54,6 @@ export function TRPCReactProvider(
     createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
-          // transformer: superjson, <-- if you use a data transformer
           url: getUrl(),
         }),
       ],

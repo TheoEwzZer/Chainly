@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactElement, useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";

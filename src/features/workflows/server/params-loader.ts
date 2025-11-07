@@ -1,4 +1,8 @@
-import { createLoader, LoaderFunction, SingleParserBuilder } from "nuqs/server";
+import {
+  createLoader,
+  type LoaderFunction,
+  type SingleParserBuilder,
+} from "nuqs/server";
 import { workflowsParams } from "../params";
 
 export type ParseServerSideValue = string | string[] | undefined;

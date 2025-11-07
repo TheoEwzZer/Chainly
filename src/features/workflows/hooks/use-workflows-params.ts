@@ -1,10 +1,10 @@
 import {
-  SingleParserBuilder,
+  type SingleParserBuilder,
   useQueryStates,
-  UseQueryStatesReturn,
+  type UseQueryStatesReturn,
 } from "nuqs";
 import { workflowsParams } from "../params";
-import { ParseServerSideValue } from "../server/params-loader";
+import type { ParseServerSideValue } from "../server/params-loader";
 
 export const useWorkflowsParams: () => UseQueryStatesReturn<{
   page: Omit<SingleParserBuilder<number>, "parseServerSide"> & {

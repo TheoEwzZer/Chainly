@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { polarClient } from "@/lib/polar";
-import { CustomerState } from "@polar-sh/sdk/models/components/customerstate.js";
+import type { CustomerState } from "@polar-sh/sdk/models/components/customerstate.js";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import { cache } from "react";

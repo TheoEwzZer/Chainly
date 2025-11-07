@@ -1,4 +1,4 @@
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 import { SidebarTrigger } from "./sidebar";
 
 export const AppHeader = (): ReactElement => {

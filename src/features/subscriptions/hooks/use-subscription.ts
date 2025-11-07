@@ -1,6 +1,6 @@
 import { authClient } from "@/lib/auth-client";
-import { CustomerState } from "@polar-sh/sdk/models/components/customerstate.js";
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import type { CustomerState } from "@polar-sh/sdk/models/components/customerstate.js";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 export const useSubscription: () => UseQueryResult<
   CustomerState | null,

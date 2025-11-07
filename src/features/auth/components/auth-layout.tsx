@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 
 export const AuthLayout = ({ children }: { children: ReactElement }) => {
   return (

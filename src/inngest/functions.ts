@@ -1,7 +1,7 @@
 import { inngest } from "./client";
 import {
   createGoogleGenerativeAI,
-  GoogleGenerativeAIProvider,
+  type GoogleGenerativeAIProvider,
 } from "@ai-sdk/google";
 import { generateText } from "ai";
 

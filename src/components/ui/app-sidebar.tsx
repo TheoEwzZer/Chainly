@@ -21,9 +21,9 @@ import {
 } from "./sidebar";
 import Link from "next/link";
 import Image from "next/image";
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 

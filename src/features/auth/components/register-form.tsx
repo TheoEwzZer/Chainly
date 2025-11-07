@@ -17,11 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { ReactElement } from "react";
-import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { ReactElement } from "react";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ErrorContext } from "better-auth/react";
+import type { ErrorContext } from "better-auth/react";
 
 const registerSchema = z
   .object({
