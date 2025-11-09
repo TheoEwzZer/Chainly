@@ -12,7 +12,8 @@ export const createTRPCContext = cache(async () => {
   });
 
   return {
-    session: session ?? null,
+    userId: session?.user?.id || null,
+    session,
   };
 });
 
