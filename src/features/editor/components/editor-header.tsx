@@ -16,12 +16,13 @@ import {
   useUpdateWorkflow,
   useUpdateWorkflowName,
 } from "@/features/workflows/hooks/use-workflows";
-import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useAtomValue } from "jotai";
 import { editorAtom } from "../store/atoms";
 import { ReactFlowInstance } from "@xyflow/react";
 import type { Node, Edge } from "@xyflow/react";
+import { NodeType } from "@/generated/prisma/enums";
 import { Spinner } from "@/components/ui/spinner";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
@@ -36,9 +37,19 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
     const nodes: Node[] = editor.getNodes();
     const edges: Edge[] = editor.getEdges();
 
+    const isValidNodeType = (value: unknown): value is NodeType =>
+      Object.values(NodeType).includes(value as NodeType);
+
+    const nodesPayload = nodes.map((node: Node) => ({
+      id: node.id,
+      position: node.position,
+      data: (node.data ?? {}) as Record<string, any>,
+      type: isValidNodeType(node.type) ? node.type : undefined,
+    }));
+
     saveWorkflow.mutate({
       id: workflowId,
-      nodes,
+      nodes: nodesPayload,
       edges,
     });
   };
