@@ -29,10 +29,11 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, type ReactElement } from "react";
 import z from "zod";
+import { HTTPRequestMethodEnum } from "./constants";
 
 const formSchema = z.object({
   endpoint: z.url({ message: "Please enter a valid URL" }),
-  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  method: z.enum(HTTPRequestMethodEnum),
   body: z.string().optional(),
 });
 
@@ -43,7 +44,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: z.infer<typeof formSchema>) => void;
   defaultEndpoint?: string;
-  defaultMethod?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  defaultMethod?: HTTPRequestMethodEnum;
   defaultBody?: string;
 }
 
@@ -52,7 +53,7 @@ export const HttpRequestDialog = ({
   onOpenChange,
   onSubmit,
   defaultEndpoint = "",
-  defaultMethod = "GET",
+  defaultMethod = HTTPRequestMethodEnum.GET,
   defaultBody = "",
 }: Props): ReactElement => {
   const form = useForm<z.infer<typeof formSchema>>({
@@ -74,11 +75,15 @@ export const HttpRequestDialog = ({
     }
   }, [open, defaultEndpoint, defaultMethod, defaultBody, form]);
 
-  const watchMethod: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = useWatch({
+  const watchMethod: HTTPRequestMethodEnum = useWatch({
     control: form.control,
     name: "method",
   });
-  const showBodyField: boolean = ["POST", "PUT", "PATCH"].includes(watchMethod);
+  const showBodyField: boolean = [
+    HTTPRequestMethodEnum.POST,
+    HTTPRequestMethodEnum.PUT,
+    HTTPRequestMethodEnum.PATCH,
+  ].includes(watchMethod);
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     onSubmit(values);
@@ -125,11 +130,21 @@ export const HttpRequestDialog = ({
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent position="item-aligned">
-                    <SelectItem value="GET">GET</SelectItem>
-                    <SelectItem value="POST">POST</SelectItem>
-                    <SelectItem value="PUT">PUT</SelectItem>
-                    <SelectItem value="PATCH">PATCH</SelectItem>
-                    <SelectItem value="DELETE">DELETE</SelectItem>
+                    <SelectItem value={HTTPRequestMethodEnum.GET}>
+                      {HTTPRequestMethodEnum.GET}
+                    </SelectItem>
+                    <SelectItem value={HTTPRequestMethodEnum.POST}>
+                      {HTTPRequestMethodEnum.POST}
+                    </SelectItem>
+                    <SelectItem value={HTTPRequestMethodEnum.PUT}>
+                      {HTTPRequestMethodEnum.PUT}
+                    </SelectItem>
+                    <SelectItem value={HTTPRequestMethodEnum.PATCH}>
+                      {HTTPRequestMethodEnum.PATCH}
+                    </SelectItem>
+                    <SelectItem value={HTTPRequestMethodEnum.DELETE}>
+                      {HTTPRequestMethodEnum.DELETE}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

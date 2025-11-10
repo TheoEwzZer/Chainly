@@ -5,10 +5,11 @@ import { Node, NodeProps, useReactFlow } from "@xyflow/react";
 import { GlobeIcon } from "lucide-react";
 import { memo, ReactElement, useState } from "react";
 import { FormType, HttpRequestDialog } from "./dialog";
+import { HTTPRequestMethodEnum } from "./constants";
 
 type HttpRequestNodeData = {
   endpoint?: string;
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method?: HTTPRequestMethodEnum;
   body?: string;
   [key: string]: unknown;
 };
@@ -47,7 +48,7 @@ export const HttpRequestNode = memo(
 
     const nodeData = props.data as HttpRequestNodeData;
     const description: string = nodeData?.endpoint
-      ? `${nodeData.method || "GET"}: ${nodeData.endpoint}`
+      ? `${nodeData.method || HTTPRequestMethodEnum.GET}: ${nodeData.endpoint}`
       : "Not configured";
 
     return (
