@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import type { NextFontWithVariable } from "next/dist/compiled/@next/font";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Provider } from "jotai";
 
 const geistSans: NextFontWithVariable = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TRPCReactProvider>
-          <NuqsAdapter>{children}</NuqsAdapter>
+          <NuqsAdapter>
+            <Provider>{children}</Provider>
+          </NuqsAdapter>
           <Toaster />
         </TRPCReactProvider>
       </body>

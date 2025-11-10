@@ -8,12 +8,7 @@ export const AddNodeButton = memo((): ReactElement => {
 
   return (
     <NodeSelector open={selectorOpen} onOpenChange={setSelectorOpen}>
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={(): void => console.log("add node")}
-        className="bg-primary-foreground"
-      >
+      <Button size="icon" variant="ghost" className="bg-primary-foreground">
         <PlusIcon className="size-4" />
       </Button>
     </NodeSelector>

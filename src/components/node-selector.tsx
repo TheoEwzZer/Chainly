@@ -90,8 +90,6 @@ export function NodeSelector({
           type: selection.type,
         };
 
-        console.log(newNode);
-
         if (hasInitialTrigger) {
           return [newNode];
         }

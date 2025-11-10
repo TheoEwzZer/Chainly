@@ -1,29 +1,37 @@
 import { cn } from "@/lib/utils";
 import { forwardRef, type HTMLAttributes } from "react";
+import { NodeStatus } from "./node-status-indicator";
+import { CheckCircle2Icon, Loader2Icon, XCircleIcon } from "lucide-react";
 
-export const BaseNode = forwardRef<
-  HTMLDivElement,
-  HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="button"
-    className={cn(
-      "relative rounded-md border bg-card text-card-foreground",
-      "hover:ring-1",
-      // React Flow displays node elements inside of a `NodeWrapper` component,
-      // which compiles down to a div with the class `react-flow__node`.
-      // When a node is selected, the class `selected` is added to the
-      // `react-flow__node` element. This allows us to style the node when it
-      // is selected, using Tailwind's `&` selector.
-      String.raw`[.react-flow\_\_node.selected_&]:border-muted-foreground`,
-      String.raw`[.react-flow\_\_node.selected_&]:shadow-lg`,
-      className
-    )}
-    tabIndex={0}
-    {...props}
-  />
-));
+interface BaseNodeProps extends HTMLAttributes<HTMLDivElement> {
+  status?: NodeStatus;
+}
+
+export const BaseNode = forwardRef<HTMLDivElement, BaseNodeProps>(
+  ({ className, status, ...props }: BaseNodeProps, ref) => (
+    <div
+      ref={ref}
+      role="button"
+      className={cn(
+        "relative rounded-md border bg-card text-card-foreground border-muted-foreground hover:bg-background",
+        className
+      )}
+      tabIndex={0}
+      {...props}
+    >
+      {props.children}
+      {status === "error" && (
+        <XCircleIcon className="absolute right-0.75 bottom-0.75 size-2 text-red-400 stroke-3" />
+      )}
+      {status === "success" && (
+        <CheckCircle2Icon className="absolute right-0.75 bottom-0.75 size-2 text-emerald-600 stroke-3" />
+      )}
+      {status === "loading" && (
+        <Loader2Icon className="absolute -right-0.25 -bottom-0.25 size-2 text-[rgba(42,67,233)] stroke-3 animate-spin" />
+      )}
+    </div>
+  )
+);
 BaseNode.displayName = "BaseNode";
 
 /**

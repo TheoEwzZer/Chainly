@@ -13,16 +13,43 @@ import {
 import Link from "next/link";
 import {
   useSuspenseWorkflow,
+  useUpdateWorkflow,
   useUpdateWorkflowName,
 } from "@/features/workflows/hooks/use-workflows";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useAtomValue } from "jotai";
+import { editorAtom } from "../store/atoms";
+import { ReactFlowInstance } from "@xyflow/react";
+import type { Node, Edge } from "@xyflow/react";
+import { Spinner } from "@/components/ui/spinner";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
+  const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
+  const saveWorkflow = useUpdateWorkflow();
+
+  const handleSave = () => {
+    if (!editor) {
+      return;
+    }
+
+    const nodes: Node[] = editor.getNodes();
+    const edges: Edge[] = editor.getEdges();
+
+    saveWorkflow.mutate({
+      id: workflowId,
+      nodes,
+      edges,
+    });
+  };
+
+  const { isPending } = saveWorkflow;
+
   return (
     <div className="ml-auto">
-      <Button size="sm" onClick={() => console.log("save")} disabled={false}>
-        <SaveIcon className="size-4" /> Save
+      <Button size="sm" onClick={handleSave} disabled={isPending}>
+        {isPending ? <Spinner /> : <SaveIcon className="size-4" />}
+        {isPending ? "Saving..." : "Save"}
       </Button>
     </div>
   );

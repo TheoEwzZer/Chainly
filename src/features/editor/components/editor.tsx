@@ -21,6 +21,8 @@ import "@xyflow/react/dist/style.css";
 import { ZoomSlider } from "@/components/react-flow/zoom-slider";
 import { nodeComponents } from "@/config/node-component";
 import { AddNodeButton } from "./add-node-button";
+import { useSetAtom } from "jotai";
+import { editorAtom } from "../store/atoms";
 
 export const EditorLoading = (): ReactElement => {
   return <LoadingView message="Loading editor..." />;
@@ -32,6 +34,8 @@ export const EditorError = (): ReactElement => {
 
 export const Editor = ({ workflowId }: { workflowId: string }) => {
   const { data: workflow } = useSuspenseWorkflow(workflowId);
+
+  const setEditor = useSetAtom(editorAtom);
 
   const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
   const [edges, setEdges] = useState<Edge[]>(workflow.edges);
@@ -71,6 +75,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
           hideAttribution: true,
         }}
         nodeTypes={nodeComponents}
+        onInit={setEditor}
+        snapGrid={[10, 10]}
+        snapToGrid
       >
         <Background />
         <ZoomSlider position="top-left" />
