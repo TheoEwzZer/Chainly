@@ -10,7 +10,7 @@ import {
   EntitySearch,
   ErrorView,
   LoadingView,
-} from "@/components/ui/entity-components";
+} from "@/components/entity-components";
 import {
   useCreateWorkflow,
   useRemoveWorkflow,
@@ -25,7 +25,6 @@ import { useEntitySearch } from "@/hooks/use-entity-search";
 import type { Workflow } from "@/generated/prisma/client";
 import { WorkflowIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
 
 export const WorkflowsSearch = (): ReactElement => {
   const [params, setParamsAsync] = useWorkflowsParams();

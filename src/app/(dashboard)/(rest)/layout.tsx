@@ -1,4 +1,4 @@
-import { AppHeader } from "@/components/ui/app-header";
+import { AppHeader } from "@/components/app-header";
 import type { ReactElement } from "react";
 
 const Layout = ({ children }: { children: ReactElement }) => {

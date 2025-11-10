@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SidebarTrigger } from "./sidebar";
+import { SidebarTrigger } from "./ui/sidebar";
 
 export const AppHeader = (): ReactElement => {
   return (

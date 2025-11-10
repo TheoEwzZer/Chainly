@@ -18,7 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "./sidebar";
+} from "./ui/sidebar";
 import Link from "next/link";
 import Image from "next/image";
 import type { ReactElement } from "react";

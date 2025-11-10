@@ -1,5 +1,4 @@
 import type { ChangeEvent, ReactElement, ReactNode } from "react";
-import { Button } from "./button";
 import {
   AlertTriangleIcon,
   MoreVerticalIcon,
@@ -9,33 +8,14 @@ import {
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { Spinner } from "./spinner";
-import { InputGroup, InputGroupInput, InputGroupAddon } from "./input-group";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "./pagination";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "./empty";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardDescription, CardTitle } from "./card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
+import { Button } from "./ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
+import { Card, CardContent, CardTitle, CardDescription } from "./ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "./ui/empty";
+import { InputGroup, InputGroupInput, InputGroupAddon } from "./ui/input-group";
+import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationEllipsis, PaginationLink, PaginationNext } from "./ui/pagination";
+import { Spinner } from "./ui/spinner";
 
 type EntityHeaderProps = {
   title: string;
