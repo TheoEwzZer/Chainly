@@ -8,6 +8,7 @@ import { HttpRequestFormValues, HttpRequestDialog } from "./dialog";
 import { HTTPRequestMethodEnum } from "./constants";
 
 type HttpRequestNodeData = {
+  variableName?: string;
   endpoint?: string;
   method?: HTTPRequestMethodEnum;
   body?: string;

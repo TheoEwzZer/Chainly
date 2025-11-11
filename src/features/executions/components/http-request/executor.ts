@@ -1,15 +1,13 @@
-import {
-  NodeExecutor,
-  WorkflowContext,
-} from "@/features/executions/components/types";
+import { NodeExecutor } from "@/features/executions/components/types";
 import { HTTPRequestMethodEnum } from "./constants";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions, type KyResponse } from "ky";
 
 type HttpRequestData = {
-  endpoint: string;
-  method: HTTPRequestMethodEnum;
-  body: string;
+  variableName?: string;
+  endpoint?: string;
+  method?: HTTPRequestMethodEnum;
+  body?: string;
 };
 
 export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
@@ -23,6 +21,11 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   if (!data.endpoint) {
     // TODO: Publish error state for HTTP request
     throw new NonRetriableError("HTTP Request Node: Endpoint is required");
+  }
+
+  if (!data.variableName) {
+    // TODO: Publish error state for HTTP Request Node: Variable name is required
+    throw new NonRetriableError("HTTP Request Node: Variable name is required");
   }
 
   return await step.run("http-request", async () => {
@@ -39,6 +42,9 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       ].includes(method)
     ) {
       options.body = data.body;
+      options.headers = {
+        "Content-Type": "application/json",
+      };
     }
 
     const response: KyResponse<unknown> = await ky(endpoint, options);
@@ -47,13 +53,21 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       ? await response.json()
       : await response.text();
 
-    return {
-      ...context,
+    const responsePayload = {
       httpResponse: {
         status: response.status,
         statusText: response.statusText,
         data: responseData,
       },
     };
+
+    if (data.variableName) {
+      return {
+        ...context,
+        [data.variableName]: responsePayload,
+      };
+    }
+
+    return { ...context, ...responsePayload };
   });
 };

@@ -32,6 +32,14 @@ import z from "zod";
 import { HTTPRequestMethodEnum } from "./constants";
 
 const formSchema = z.object({
+  variableName: z
+    .string()
+    .min(1, "Variable name is required")
+    .max(30, "Variable name must be less than 30 characters")
+    .regex(
+      /^[A-Za-z_$][A-Za-z0-9_$]*$/,
+      "Variable name must start with a letter or underscore and contain only letters, numbers, and underscores"
+    ),
   endpoint: z.url({ message: "Please enter a valid URL" }),
   method: z.enum(HTTPRequestMethodEnum),
   body: z.string().optional(),
@@ -55,6 +63,7 @@ export const HttpRequestDialog = ({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      variableName: defaultValues.variableName || "",
       endpoint: defaultValues.endpoint || "",
       method: defaultValues.method || HTTPRequestMethodEnum.GET,
       body: defaultValues.body || "",
@@ -64,6 +73,7 @@ export const HttpRequestDialog = ({
   useEffect((): void => {
     if (open) {
       form.reset({
+        variableName: defaultValues.variableName || "",
         endpoint: defaultValues.endpoint || "",
         method: defaultValues.method || HTTPRequestMethodEnum.GET,
         body: defaultValues.body || "",
@@ -74,6 +84,10 @@ export const HttpRequestDialog = ({
   const watchMethod: HTTPRequestMethodEnum = useWatch({
     control: form.control,
     name: "method",
+  });
+  const watchVariableName: string = useWatch({
+    control: form.control,
+    name: "variableName",
   });
   const showBodyField: boolean = [
     HTTPRequestMethodEnum.POST,
@@ -99,6 +113,30 @@ export const HttpRequestDialog = ({
           onSubmit={form.handleSubmit(handleSubmit)}
           className="space-y-8 mt-4"
         >
+          <Controller
+            name="variableName"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Variable Name</FieldLabel>
+                <FieldDescription>
+                  Use this name to reference the result in other nodes:{" "}
+                  {`{{${watchVariableName || "myApiCall"}.httpResponse.data}}`}
+                </FieldDescription>
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="myApiCall"
+                  aria-invalid={fieldState.invalid}
+                  maxLength={30}
+                  minLength={1}
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
           <Controller
             name="method"
             control={form.control}
