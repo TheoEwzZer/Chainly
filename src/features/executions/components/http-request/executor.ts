@@ -4,9 +4,9 @@ import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions, type KyResponse } from "ky";
 
 type HttpRequestData = {
-  variableName?: string;
-  endpoint?: string;
-  method?: HTTPRequestMethodEnum;
+  variableName: string;
+  endpoint: string;
+  method: HTTPRequestMethodEnum;
   body?: string;
 };
 
@@ -28,9 +28,14 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
     throw new NonRetriableError("HTTP Request Node: Variable name is required");
   }
 
+  if (!data.method) {
+    // TODO: Publish error state for HTTP Request Node: Method is required
+    throw new NonRetriableError("HTTP Request Node: Method is required");
+  }
+
   return await step.run("http-request", async () => {
-    const endpoint: string = data.endpoint!;
-    const method: HTTPRequestMethodEnum = data.method!;
+    const endpoint: string = data.endpoint;
+    const method: HTTPRequestMethodEnum = data.method;
 
     const options: KyOptions = { method };
 
@@ -61,13 +66,9 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       },
     };
 
-    if (data.variableName) {
-      return {
-        ...context,
-        [data.variableName]: responsePayload,
-      };
-    }
-
-    return { ...context, ...responsePayload };
+    return {
+      ...context,
+      [data.variableName]: responsePayload,
+    };
   });
 };
