@@ -1,29 +1,64 @@
+import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
+import prisma from "@/lib/db";
+import type { Connection, Node, Workflow } from "@/generated/prisma/client";
+import type { Jsonify } from "inngest/types";
+import { topologicalSort } from "./utils";
+import { getExecutor } from "@/features/executions/lib/executor-registry";
 import {
-  createGoogleGenerativeAI,
-  type GoogleGenerativeAIProvider,
-} from "@ai-sdk/google";
-import { generateText } from "ai";
+  NodeExecutor,
+  WorkflowContext,
+} from "@/features/executions/components/types";
 
-const google: GoogleGenerativeAIProvider = createGoogleGenerativeAI();
-
-export const execute = inngest.createFunction(
-  { id: "execute-ai" },
-  { event: "execute/ai" },
+export const executeWorkflow = inngest.createFunction(
+  { id: "execute-workflow" },
+  { event: "workflow/execute.workflow" },
   async ({ event, step }) => {
-    await step.sleep("waiting-for-ai", "5s");
+    const { workflowId } = event.data;
 
-    const { steps } = await step.ai.wrap("gemini-generate-text", generateText, {
-      model: google("gemini-2.5-flash"),
-      system: "You are a helpful assistant.",
-      prompt: "What is 2 + 2?",
-      experimental_telemetry: {
-        isEnabled: true,
-        recordInputs: true,
-        recordOutputs: true,
-      },
-    });
+    if (!workflowId) {
+      throw new NonRetriableError("Workflow ID is required");
+    }
 
-    return steps;
+    const sortedNodes: Jsonify<Node>[] = await step.run(
+      "prepare-workflow",
+      async (): Promise<Node[]> => {
+        const workflow: {
+          nodes: Node[];
+          connections: Connection[];
+        } & Workflow = await prisma.workflow.findUniqueOrThrow({
+          where: { id: workflowId },
+          include: {
+            nodes: true,
+            connections: true,
+          },
+        });
+
+        try {
+          return topologicalSort(workflow.nodes, workflow.connections);
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Cyclic")) {
+            throw new NonRetriableError(
+              "Cyclic dependency detected in workflow"
+            );
+          }
+          throw error;
+        }
+      }
+    );
+
+    let context: WorkflowContext = event.data.initialData || {};
+
+    for (const node of sortedNodes) {
+      const executor: NodeExecutor = getExecutor(node.type);
+      context = await executor({
+        data: node.data as Record<string, unknown>,
+        nodeId: node.id,
+        context,
+        step,
+      });
+    }
+
+    return { workflowId, result: context };
   }
 );

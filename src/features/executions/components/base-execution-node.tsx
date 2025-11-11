@@ -1,6 +1,6 @@
 "use client";
 
-import { NodeProps, Position, useReactFlow } from "@xyflow/react";
+import { NodeProps, Position } from "@xyflow/react";
 import { LucideIcon } from "lucide-react";
 import { memo, type ReactElement } from "react";
 import { WorkflowNode } from "../../../components/workflow-node";
@@ -10,11 +10,12 @@ import {
 } from "../../../components/react-flow/base-node";
 import Image from "next/image";
 import { BaseHandle } from "../../../components/react-flow/base-handle";
-import type { Node, Edge } from "@xyflow/react";
 import {
   NodeStatus,
   NodeStatusIndicator,
 } from "@/components/react-flow/node-status-indicator";
+import { useAtomValue } from "jotai";
+import { EditorActions, editorActionsAtom } from "@/features/editor/store/atoms";
 
 interface BaseExecutionNodeProps extends NodeProps {
   icon: LucideIcon | string;
@@ -37,17 +38,12 @@ export const BaseExecutionNode = memo(
     onSettings,
     onDoubleClick,
   }: BaseExecutionNodeProps): ReactElement => {
-    const { setNodes, setEdges } = useReactFlow();
+    const editorActions: EditorActions | null = useAtomValue(editorActionsAtom);
 
     const handleDelete = (): void => {
-      setNodes((currentNodes: Node[]): Node[] => {
-        return currentNodes.filter((node: Node): boolean => node.id !== id);
-      });
-      setEdges((currentEdges: Edge[]): Edge[] => {
-        return currentEdges.filter(
-          (edge: Edge): boolean => edge.source !== id && edge.target !== id
-        );
-      });
+      if (editorActions) {
+        editorActions.deleteNodeById(id);
+      }
     };
 
     return (
