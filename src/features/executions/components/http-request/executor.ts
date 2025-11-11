@@ -2,6 +2,76 @@ import { NodeExecutor } from "@/features/executions/components/types";
 import { HTTPRequestMethodEnum } from "./constants";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions, type KyResponse } from "ky";
+import Handlebars, { SafeString } from "handlebars";
+
+Handlebars.registerHelper("json", (context: any): SafeString => {
+  const jsonString: string = JSON.stringify(context, null, 2);
+  return new Handlebars.SafeString(jsonString);
+});
+
+const escapeControlCharsInJsonStringLiterals = (raw: string): string => {
+  let result: string = "";
+  let inString: boolean = false;
+  let escapeNext: boolean = false;
+
+  for (const element of raw) {
+    const ch: string = element;
+
+    if (escapeNext) {
+      result += ch;
+      escapeNext = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      result += ch;
+      if (inString) {
+        escapeNext = true;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+
+    if (inString) {
+      const code: number | undefined = ch.codePointAt(0);
+      if (code === undefined) {
+        continue;
+      }
+      switch (code) {
+        case 0x0a: // \n
+          result += String.raw`\n`;
+          continue;
+        case 0x0d: // \r
+          result += String.raw`\r`;
+          continue;
+        case 0x09: // \t
+          result += String.raw`\t`;
+          continue;
+        case 0x08: // \b
+          result += String.raw`\b`;
+          continue;
+        case 0x0c: // \f
+          result += String.raw`\f`;
+          continue;
+        default:
+          if (code < 0x20) {
+            const hex: string = code.toString(16).padStart(4, "0");
+            result += `\\u${hex}`;
+            continue;
+          }
+      }
+    }
+
+    result += ch;
+  }
+
+  return result;
+};
 
 type HttpRequestData = {
   variableName: string;
@@ -34,7 +104,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   }
 
   return await step.run("http-request", async () => {
-    const endpoint: string = data.endpoint;
+    const endpoint: string = Handlebars.compile(data.endpoint)(context);
     const method: HTTPRequestMethodEnum = data.method;
 
     const options: KyOptions = { method };
@@ -46,10 +116,20 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
         HTTPRequestMethodEnum.PATCH,
       ].includes(method)
     ) {
-      options.body = data.body;
-      options.headers = {
-        "Content-Type": "application/json",
-      };
+      try {
+        const resolved: string = Handlebars.compile(data.body)(context);
+        const sanitized: string =
+          escapeControlCharsInJsonStringLiterals(resolved);
+        const parsedBody: unknown = JSON.parse(sanitized);
+
+        (options as KyOptions & { json?: unknown }).json = parsedBody;
+      } catch (error) {
+        throw new NonRetriableError(
+          `HTTP Request Node: Invalid JSON body template - ${
+            error instanceof Error ? error.message : "Unknown error"
+          }. Tip: when inserting variables inside JSON, use the helper {{json yourVariable}} without quotes (e.g. "message": {{json previous.data}}) to ensure proper escaping.`
+        );
+      }
     }
 
     const response: KyResponse<unknown> = await ky(endpoint, options);
