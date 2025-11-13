@@ -16,7 +16,7 @@ const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: initialExecutor,
   [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
-  [NodeType.HTTP_REQUEST]: httpRequestExecutor,
+  [NodeType.HTTP_REQUEST]: httpRequestExecutor, // TODO: fix types
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor => {

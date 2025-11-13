@@ -1,8 +1,12 @@
-import { NodeExecutor } from "@/features/executions/components/types";
+import {
+  NodeExecutor,
+  WorkflowContext,
+} from "@/features/executions/components/types";
 import { HTTPRequestMethodEnum } from "./constants";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions, type KyResponse } from "ky";
 import Handlebars, { SafeString } from "handlebars";
+import { httpRequestChannel } from "@/inngest/channels/http-request";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -85,70 +89,116 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   nodeId,
   context,
   step,
+  publish,
 }) => {
-  // TODO: Publish loading state for HTTP request
+  await publish(
+    httpRequestChannel().status({
+      nodeId,
+      status: "loading",
+    })
+  );
 
   if (!data.endpoint) {
-    // TODO: Publish error state for HTTP request
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("HTTP Request Node: Endpoint is required");
   }
 
   if (!data.variableName) {
-    // TODO: Publish error state for HTTP Request Node: Variable name is required
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("HTTP Request Node: Variable name is required");
   }
 
   if (!data.method) {
-    // TODO: Publish error state for HTTP Request Node: Method is required
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("HTTP Request Node: Method is required");
   }
 
-  return await step.run("http-request", async () => {
-    const endpoint: string = Handlebars.compile(data.endpoint)(context);
-    const method: HTTPRequestMethodEnum = data.method;
+  try {
+    const result: WorkflowContext = await step.run("http-request", async () => {
+      const endpoint: string = Handlebars.compile(data.endpoint)(context);
+      const method: HTTPRequestMethodEnum = data.method;
 
-    const options: KyOptions = { method };
+      const options: KyOptions = { method };
 
-    if (
-      [
-        HTTPRequestMethodEnum.POST,
-        HTTPRequestMethodEnum.PUT,
-        HTTPRequestMethodEnum.PATCH,
-      ].includes(method)
-    ) {
-      try {
-        const resolved: string = Handlebars.compile(data.body)(context);
-        const sanitized: string =
-          escapeControlCharsInJsonStringLiterals(resolved);
-        const parsedBody: unknown = JSON.parse(sanitized);
+      if (
+        [
+          HTTPRequestMethodEnum.POST,
+          HTTPRequestMethodEnum.PUT,
+          HTTPRequestMethodEnum.PATCH,
+        ].includes(method)
+      ) {
+        try {
+          const resolved: string = Handlebars.compile(data.body)(context);
+          const sanitized: string =
+            escapeControlCharsInJsonStringLiterals(resolved);
+          const parsedBody: unknown = JSON.parse(sanitized);
 
-        (options as KyOptions & { json?: unknown }).json = parsedBody;
-      } catch (error) {
-        throw new NonRetriableError(
-          `HTTP Request Node: Invalid JSON body template - ${
-            error instanceof Error ? error.message : "Unknown error"
-          }. Tip: when inserting variables inside JSON, use the helper {{json yourVariable}} without quotes (e.g. "message": {{json previous.data}}) to ensure proper escaping.`
-        );
+          (options as KyOptions & { json?: unknown }).json = parsedBody;
+        } catch (error) {
+          await publish(
+            httpRequestChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+          throw new NonRetriableError(
+            `HTTP Request Node: Invalid JSON body template - ${
+              error instanceof Error ? error.message : "Unknown error"
+            }. Tip: when inserting variables inside JSON, use the helper {{json yourVariable}} without quotes (e.g. "message": {{json previous.data}}) to ensure proper escaping.`
+          );
+        }
       }
-    }
 
-    const response: KyResponse<unknown> = await ky(endpoint, options);
-    const contentType: string | null = response.headers.get("content-type");
-    const responseData: unknown = contentType?.includes("application/json")
-      ? await response.json()
-      : await response.text();
+      const response: KyResponse<unknown> = await ky(endpoint, options);
+      const contentType: string | null = response.headers.get("content-type");
+      const responseData: unknown = contentType?.includes("application/json")
+        ? await response.json()
+        : await response.text();
 
-    const responsePayload = {
-      httpResponse: {
-        status: response.status,
-        statusText: response.statusText,
-        data: responseData,
-      },
-    };
+      const responsePayload = {
+        httpResponse: {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData,
+        },
+      };
 
-    return {
-      ...context,
-      [data.variableName]: responsePayload,
-    };
-  });
+      return {
+        ...context,
+        [data.variableName]: responsePayload,
+      };
+    });
+
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "success",
+      })
+    );
+
+    return result;
+  } catch (error) {
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw error;
+  }
 };

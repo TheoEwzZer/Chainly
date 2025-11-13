@@ -9,11 +9,20 @@ import {
   NodeExecutor,
   WorkflowContext,
 } from "@/features/executions/components/types";
+import { httpRequestChannel } from "./channels/http-request";
+import { manualTriggerChannel } from "./channels/manual-trigger";
 
 export const executeWorkflow = inngest.createFunction(
-  { id: "execute-workflow" },
-  { event: "workflow/execute.workflow" },
-  async ({ event, step }) => {
+  {
+    id: "execute-workflow",
+    retries: 1,
+    timeouts: { start: "10s" },
+  },
+  {
+    event: "workflow/execute.workflow",
+    channels: [httpRequestChannel(), manualTriggerChannel()],
+  },
+  async ({ event, step, publish }) => {
     const { workflowId } = event.data;
 
     if (!workflowId) {
@@ -56,6 +65,7 @@ export const executeWorkflow = inngest.createFunction(
         nodeId: node.id,
         context,
         step,
+        publish,
       });
     }
 
