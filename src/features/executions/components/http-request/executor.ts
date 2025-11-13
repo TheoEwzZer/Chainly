@@ -13,6 +13,23 @@ Handlebars.registerHelper("json", (context: any): SafeString => {
   return new Handlebars.SafeString(jsonString);
 });
 
+Handlebars.registerHelper("lookup", (obj: any, key: string): any => {
+  if (obj == null || typeof obj !== "object") {
+    return undefined;
+  }
+  return obj[key];
+});
+
+const transformBracketNotation = (template: string): string => {
+  return template.replaceAll(
+    /\{\{([^}]*?)\[["']([^"']+)["']\]\}\}/g,
+    (_: string, path: string, key: string): string => {
+      const trimmedPath: string = path.trim();
+      return `{{lookup ${trimmedPath} "${key}"}}`;
+    }
+  );
+};
+
 const escapeControlCharsInJsonStringLiterals = (raw: string): string => {
   let result: string = "";
   let inString: boolean = false;
@@ -130,7 +147,10 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
   try {
     const result: WorkflowContext = await step.run("http-request", async () => {
-      const endpoint: string = Handlebars.compile(data.endpoint)(context);
+      const transformedEndpoint: string = transformBracketNotation(
+        data.endpoint
+      );
+      const endpoint: string = Handlebars.compile(transformedEndpoint)(context);
       const method: HTTPRequestMethodEnum = data.method;
 
       const options: KyOptions = { method };
@@ -143,7 +163,10 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
         ].includes(method)
       ) {
         try {
-          const resolved: string = Handlebars.compile(data.body)(context);
+          const transformedBody: string = transformBracketNotation(
+            data.body || ""
+          );
+          const resolved: string = Handlebars.compile(transformedBody)(context);
           const sanitized: string =
             escapeControlCharsInJsonStringLiterals(resolved);
           const parsedBody: unknown = JSON.parse(sanitized);

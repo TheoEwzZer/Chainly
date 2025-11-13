@@ -6,6 +6,7 @@ import {
 } from "../components/types";
 import { manualTriggerExecutor } from "@/features/triggers/components/manual-trigger/executor";
 import { httpRequestExecutor } from "../components/http-request/executor";
+import { googleFormTriggerExecutor } from "@/features/triggers/components/google-form-trigger/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
   context,
@@ -17,6 +18,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
   [NodeType.INITIAL]: initialExecutor,
   [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
   [NodeType.HTTP_REQUEST]: httpRequestExecutor, // TODO: fix types
+  [NodeType.GOOGLE_FORM_TRIGGER]: googleFormTriggerExecutor,
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor => {

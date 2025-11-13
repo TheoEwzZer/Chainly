@@ -40,7 +40,7 @@ const formSchema = z.object({
       /^[A-Za-z_$][A-Za-z0-9_$]*$/,
       "Variable name must start with a letter or underscore and contain only letters, numbers, and underscores"
     ),
-  endpoint: z.url({ message: "Please enter a valid URL" }),
+  endpoint: z.string().min(1, "Endpoint is required"),
   method: z.enum(HTTPRequestMethodEnum),
   body: z.string().optional(),
 });
@@ -197,7 +197,7 @@ export const HttpRequestDialog = ({
                 <Input
                   {...field}
                   id={field.name}
-                  type="url"
+                  type="text"
                   placeholder="https://api.example.com/users/{{httpResponse.data.id}}"
                   aria-invalid={fieldState.invalid}
                 />
