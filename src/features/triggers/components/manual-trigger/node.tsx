@@ -9,7 +9,7 @@ import { useNodeStatus } from "@/features/executions/hooks/use-node-status";
 import { manualTriggerChannel } from "@/inngest/channels/manual-trigger";
 import { fetchManualTriggerRealtimeToken } from "./actions";
 
-export const ManuelTriggerNode = memo((props: NodeProps): ReactElement => {
+export const ManualTriggerNode = memo((props: NodeProps): ReactElement => {
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
   const nodeStatus = useNodeStatus({
@@ -38,4 +38,4 @@ export const ManuelTriggerNode = memo((props: NodeProps): ReactElement => {
   );
 });
 
-ManuelTriggerNode.displayName = "ManuelTriggerNode";
+ManualTriggerNode.displayName = "ManualTriggerNode";

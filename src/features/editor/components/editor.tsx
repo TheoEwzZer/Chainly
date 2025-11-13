@@ -266,7 +266,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     };
   }, [nodes, edges, saveToHistory, getStateKeyWithoutSelection]);
 
-  const hasManuelTrigger: boolean = useMemo((): boolean => {
+  const hasManualTrigger: boolean = useMemo((): boolean => {
     return nodes.some(
       (node: Node): boolean => node.type === NodeType.MANUAL_TRIGGER
     );
@@ -381,7 +381,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         <Panel position="top-right">
           <AddNodeButton />
         </Panel>
-        {hasManuelTrigger && (
+        {hasManualTrigger && (
           <Panel position="bottom-center">
             <ExecuteWorkflowButton workflowId={workflowId} />
           </Panel>
