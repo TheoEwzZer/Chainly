@@ -7,6 +7,7 @@ import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions, type KyResponse } from "ky";
 import Handlebars, { SafeString } from "handlebars";
 import { httpRequestChannel } from "@/inngest/channels/http-request";
+import { HttpRequestFormValues } from "./dialog";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -94,14 +95,7 @@ const escapeControlCharsInJsonStringLiterals = (raw: string): string => {
   return result;
 };
 
-type HttpRequestData = {
-  variableName: string;
-  endpoint: string;
-  method: HTTPRequestMethodEnum;
-  body?: string;
-};
-
-export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
+export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
   data,
   nodeId,
   context,
@@ -192,7 +186,6 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       const responseData: unknown = contentType?.includes("application/json")
         ? await response.json()
         : await response.text();
-
       const responsePayload = {
         httpResponse: {
           status: response.status,

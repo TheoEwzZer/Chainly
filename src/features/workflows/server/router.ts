@@ -14,19 +14,65 @@ import {
 } from "@/trpc/init";
 import { generateSlug } from "random-word-slugs";
 import { z } from "zod";
-import { sendWorkflowExecution } from "@/inngest/utils";
+import { sendWorkflowExecution, topologicalSort } from "@/inngest/utils";
+import { TRPCError } from "@trpc/server";
 
 export const workflowsRouter = createTRPCRouter({
   execute: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const workflow: Workflow = await prisma.workflow.findUniqueOrThrow({
+      const workflow: Workflow & {
+        nodes: PrismaNode[];
+        connections: PrismaConnection[];
+      } = await prisma.workflow.findUniqueOrThrow({
         where: { id: input.id, userId: ctx.auth.user.id },
+        include: {
+          nodes: true,
+          connections: true,
+        },
       });
+
+      try {
+        topologicalSort(workflow.nodes, workflow.connections);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("Cyclic")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cyclic dependency detected in workflow",
+          });
+        }
+        if (
+          error instanceof Error &&
+          error.message.includes(
+            "You must have at least one connection between reachable nodes"
+          )
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "You must have at least one connection between reachable nodes",
+          });
+        }
+        if (error instanceof Error && error.message.includes("No trigger")) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No trigger node found in workflow",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to validate workflow",
+        });
+      }
 
       await sendWorkflowExecution({ workflowId: input.id });
 
-      return workflow;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { nodes, connections, ...workflowData } = workflow;
+      return workflowData;
     }),
   create: premiumProcedure.mutation(({ ctx }) => {
     return prisma.workflow.create({

@@ -1,8 +1,7 @@
 "use client";
 
 import { NodeType } from "@/generated/prisma/enums";
-import { GlobeIcon, MousePointerIcon } from "lucide-react";
-import { useCallback, type ComponentType, type ReactElement } from "react";
+import { useCallback, type ReactElement } from "react";
 import {
   Sheet,
   SheetContent,
@@ -17,39 +16,11 @@ import { useReactFlow, XYPosition } from "@xyflow/react";
 import { toast } from "sonner";
 import { createId } from "@paralleldrive/cuid2";
 import type { Node } from "@xyflow/react";
-
-export type NodeTypeOption = {
-  type: NodeType;
-  label: string;
-  description: string;
-  icon: ComponentType<{ className?: string }> | string;
-};
-
-const triggerNodes: NodeTypeOption[] = [
-  {
-    type: NodeType.MANUAL_TRIGGER,
-    label: "Trigger Manually",
-    description:
-      "Runs the flow on clicking a button. Good for getting started quickly.",
-    icon: MousePointerIcon,
-  },
-  {
-    type: NodeType.GOOGLE_FORM_TRIGGER,
-    label: "Google Form",
-    description:
-      "Runs the flow when a Google Form is submitted. Good for collecting data from a form.",
-    icon: "/logos/google-form.svg",
-  },
-];
-
-const executionNodes: NodeTypeOption[] = [
-  {
-    type: NodeType.HTTP_REQUEST,
-    label: "HTTP Request",
-    description: "Makes an HTTP request to a URL. Good for making API calls.",
-    icon: GlobeIcon,
-  },
-];
+import {
+  triggerNodes,
+  executionNodes,
+  type NodeTypeOption,
+} from "@/config/node-types";
 
 interface NodeSelectorProps {
   open: boolean;
@@ -66,13 +37,17 @@ export function NodeSelector({
 
   const handleNodeSelect = useCallback(
     (selection: NodeTypeOption): void => {
-      if (selection.type === NodeType.MANUAL_TRIGGER) {
+      const triggerTypes = new Set(
+        triggerNodes.map((n: NodeTypeOption): NodeType => n.type)
+      );
+
+      if (triggerTypes.has(selection.type)) {
         const nodes: Node[] = getNodes();
-        const hasManualTrigger: boolean = nodes.some(
-          (node: Node): boolean => node.type === NodeType.MANUAL_TRIGGER
+        const hasTrigger: boolean = nodes.some((node: Node): boolean =>
+          triggerTypes.has(node.type as NodeType)
         );
-        if (hasManualTrigger) {
-          toast.error("You can only have one manual trigger");
+        if (hasTrigger) {
+          toast.error("You can only have one trigger per workflow");
           return;
         }
       }

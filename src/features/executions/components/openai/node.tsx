@@ -2,33 +2,31 @@
 
 import { BaseExecutionNode } from "@/features/executions/components/base-execution-node";
 import { Node, NodeProps, useReactFlow } from "@xyflow/react";
-import { GlobeIcon } from "lucide-react";
 import { memo, ReactElement, useState } from "react";
-import { HttpRequestFormValues, HttpRequestDialog } from "./dialog";
-import { HTTPRequestMethodEnum } from "./constants";
+import { OpenAIFormValues, OpenAIDialog } from "./dialog";
 import { useNodeStatus } from "../../hooks/use-node-status";
-import { httpRequestChannel } from "@/inngest/channels/http-request";
-import { fetchHttpRealtimeToken } from "./actions";
+import { openaiChannel } from "@/inngest/channels/openai";
+import { fetchOpenAIRealtimeToken } from "./actions";
 
-type HttpRequestNodeType = Node<HttpRequestFormValues>;
+type OpenAINodeType = Node<OpenAIFormValues>;
 
-export const HttpRequestNode = memo(
-  (props: NodeProps<HttpRequestNodeType>): ReactElement => {
+export const OpenAINode = memo(
+  (props: NodeProps<OpenAINodeType>): ReactElement => {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const { setNodes } = useReactFlow();
 
     const nodeStatus = useNodeStatus({
       nodeId: props.id,
-      channel: httpRequestChannel().name,
+      channel: openaiChannel().name,
       topic: "status",
-      refreshToken: fetchHttpRealtimeToken,
+      refreshToken: fetchOpenAIRealtimeToken,
     });
 
     const handleSettings = (): void => {
       setDialogOpen(true);
     };
 
-    const handleSubmit = (values: HttpRequestFormValues): void => {
+    const handleSubmit = (values: OpenAIFormValues): void => {
       setNodes((nodes: Node[]): Node[] =>
         nodes.map((node: Node): Node => {
           if (node.id === props.id) {
@@ -45,9 +43,10 @@ export const HttpRequestNode = memo(
       );
     };
 
-    const nodeData = props.data as HttpRequestFormValues;
-    const description: string = nodeData?.endpoint
-      ? `${nodeData.method || HTTPRequestMethodEnum.GET}: ${nodeData.endpoint}`
+    const nodeData = props.data as OpenAIFormValues;
+    const description: string = nodeData?.userPrompt
+      ? nodeData.userPrompt.slice(0, 50) +
+        (nodeData.userPrompt.length > 50 ? "..." : "")
       : "Not configured";
 
     return (
@@ -55,14 +54,14 @@ export const HttpRequestNode = memo(
         <BaseExecutionNode
           {...props}
           id={props.id}
-          icon={GlobeIcon}
-          name="HTTP Request"
+          icon="/logos/openai.svg"
+          name="OpenAI"
           status={nodeStatus}
           description={description}
           onSettings={handleSettings}
           onDoubleClick={handleSettings}
         />
-        <HttpRequestDialog
+        <OpenAIDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSubmit={handleSubmit}
@@ -73,4 +72,5 @@ export const HttpRequestNode = memo(
   }
 );
 
-HttpRequestNode.displayName = "HttpRequestNode";
+OpenAINode.displayName = "OpenAINode";
+

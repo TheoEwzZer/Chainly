@@ -2,33 +2,31 @@
 
 import { BaseExecutionNode } from "@/features/executions/components/base-execution-node";
 import { Node, NodeProps, useReactFlow } from "@xyflow/react";
-import { GlobeIcon } from "lucide-react";
 import { memo, ReactElement, useState } from "react";
-import { HttpRequestFormValues, HttpRequestDialog } from "./dialog";
-import { HTTPRequestMethodEnum } from "./constants";
+import { AnthropicFormValues, AnthropicDialog } from "./dialog";
 import { useNodeStatus } from "../../hooks/use-node-status";
-import { httpRequestChannel } from "@/inngest/channels/http-request";
-import { fetchHttpRealtimeToken } from "./actions";
+import { anthropicChannel } from "@/inngest/channels/anthropic";
+import { fetchAnthropicRealtimeToken } from "./actions";
 
-type HttpRequestNodeType = Node<HttpRequestFormValues>;
+type AnthropicNodeType = Node<AnthropicFormValues>;
 
-export const HttpRequestNode = memo(
-  (props: NodeProps<HttpRequestNodeType>): ReactElement => {
+export const AnthropicNode = memo(
+  (props: NodeProps<AnthropicNodeType>): ReactElement => {
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const { setNodes } = useReactFlow();
 
     const nodeStatus = useNodeStatus({
       nodeId: props.id,
-      channel: httpRequestChannel().name,
+      channel: anthropicChannel().name,
       topic: "status",
-      refreshToken: fetchHttpRealtimeToken,
+      refreshToken: fetchAnthropicRealtimeToken,
     });
 
     const handleSettings = (): void => {
       setDialogOpen(true);
     };
 
-    const handleSubmit = (values: HttpRequestFormValues): void => {
+    const handleSubmit = (values: AnthropicFormValues): void => {
       setNodes((nodes: Node[]): Node[] =>
         nodes.map((node: Node): Node => {
           if (node.id === props.id) {
@@ -45,9 +43,10 @@ export const HttpRequestNode = memo(
       );
     };
 
-    const nodeData = props.data as HttpRequestFormValues;
-    const description: string = nodeData?.endpoint
-      ? `${nodeData.method || HTTPRequestMethodEnum.GET}: ${nodeData.endpoint}`
+    const nodeData = props.data as AnthropicFormValues;
+    const description: string = nodeData?.userPrompt
+      ? nodeData.userPrompt.slice(0, 50) +
+        (nodeData.userPrompt.length > 50 ? "..." : "")
       : "Not configured";
 
     return (
@@ -55,14 +54,14 @@ export const HttpRequestNode = memo(
         <BaseExecutionNode
           {...props}
           id={props.id}
-          icon={GlobeIcon}
-          name="HTTP Request"
+          icon="/logos/anthropic.svg"
+          name="Anthropic Claude"
           status={nodeStatus}
           description={description}
           onSettings={handleSettings}
           onDoubleClick={handleSettings}
         />
-        <HttpRequestDialog
+        <AnthropicDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSubmit={handleSubmit}
@@ -73,4 +72,4 @@ export const HttpRequestNode = memo(
   }
 );
 
-HttpRequestNode.displayName = "HttpRequestNode";
+AnthropicNode.displayName = "AnthropicNode";
