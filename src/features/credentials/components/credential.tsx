@@ -2,7 +2,7 @@
 
 import { CredentialType } from "@/generated/prisma/enums";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   useCreateCredential,
   useSuspenseCredential,
@@ -232,7 +232,6 @@ export const CredentialView = ({
 }: {
   credentialId: string;
 }): ReactElement => {
-  const params = useParams();
   const { data: credential } = useSuspenseCredential(credentialId);
 
   return <CredentialForm initialData={credential} />;
