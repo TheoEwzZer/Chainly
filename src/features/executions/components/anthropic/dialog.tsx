@@ -54,7 +54,6 @@ const formSchema = z.object({
   variableName: z
     .string()
     .min(1, "Variable name is required")
-    .max(30, "Variable name must be less than 30 characters")
     .regex(
       /^[A-Za-z_$][A-Za-z0-9_$]*$/,
       "Variable name must start with a letter or underscore and contain only letters, numbers, and underscores"
@@ -148,8 +147,6 @@ export const AnthropicDialog = ({
                     id={field.name}
                     placeholder="claudeResponse"
                     aria-invalid={fieldState.invalid}
-                    maxLength={30}
-                    minLength={1}
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
