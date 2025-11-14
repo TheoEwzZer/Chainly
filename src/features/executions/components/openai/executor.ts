@@ -35,6 +35,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   context,
   step,
   publish,
+  userId,
 }) => {
   await publish(
     openaiChannel().status({
@@ -87,7 +88,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
     "get-credential",
     async () => {
       return await prisma.credential.findUnique({
-        where: { id: data.credentialId },
+        where: { id: data.credentialId, userId },
         select: {
           value: true,
         },

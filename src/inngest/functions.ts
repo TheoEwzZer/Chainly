@@ -67,6 +67,24 @@ export const executeWorkflow = inngest.createFunction(
       }
     );
 
+    const userId: string = await step.run(
+      "find-user-id",
+      async (): Promise<string> => {
+        const workflow: { userId: string } =
+          await prisma.workflow.findUniqueOrThrow({
+            where: { id: workflowId },
+            select: {
+              userId: true,
+            },
+          });
+        return workflow.userId;
+      }
+    );
+
+    if (!userId) {
+      throw new NonRetriableError("User ID not found");
+    }
+
     let context: WorkflowContext = event.data.initialData || {};
 
     for (const node of sortedNodes) {
@@ -77,6 +95,7 @@ export const executeWorkflow = inngest.createFunction(
         context,
         step,
         publish,
+        userId,
       });
     }
 

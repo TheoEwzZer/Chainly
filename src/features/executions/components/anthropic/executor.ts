@@ -35,6 +35,7 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
   context,
   step,
   publish,
+  userId,
 }) => {
   await publish(
     anthropicChannel().status({
@@ -87,7 +88,7 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
     "get-credential",
     async () => {
       return await prisma.credential.findUnique({
-        where: { id: data.credentialId },
+        where: { id: data.credentialId, userId },
         select: {
           value: true,
         },
