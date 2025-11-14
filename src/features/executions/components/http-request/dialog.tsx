@@ -163,7 +163,7 @@ export const HttpRequestDialog = ({
                   >
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
-                  <SelectContent position="item-aligned">
+                  <SelectContent>
                     <SelectItem value={HTTPRequestMethodEnum.GET}>
                       {HTTPRequestMethodEnum.GET}
                     </SelectItem>

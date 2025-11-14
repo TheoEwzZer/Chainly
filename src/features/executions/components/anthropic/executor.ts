@@ -5,6 +5,7 @@ import { anthropicChannel } from "@/inngest/channels/anthropic";
 import { generateText } from "ai";
 import { AnthropicProvider, createAnthropic } from "@ai-sdk/anthropic";
 import { AnthropicFormValues } from "./dialog";
+import prisma from "@/lib/db";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -72,23 +73,41 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
     throw new NonRetriableError("Anthropic Node: User prompt is required");
   }
 
-  const credentialValue: string | undefined = process.env.ANTHROPIC_API_KEY;
-
-  if (!credentialValue) {
+  if (!data.credentialId) {
     await publish(
       anthropicChannel().status({
         nodeId,
         status: "error",
       })
     );
-    throw new NonRetriableError(
-      "Anthropic Node: ANTHROPIC_API_KEY environment variable is not set"
+    throw new NonRetriableError("Anthropic Node: Credential is required");
+  }
+
+  const credential: { value: string } | null = await step.run(
+    "get-credential",
+    async () => {
+      return await prisma.credential.findUnique({
+        where: { id: data.credentialId },
+        select: {
+          value: true,
+        },
+      });
+    }
+  );
+
+  if (!credential) {
+    await publish(
+      anthropicChannel().status({
+        nodeId,
+        status: "error",
+      })
     );
+    throw new NonRetriableError("Anthropic Node: Credential not found");
   }
 
   try {
     const anthropic: AnthropicProvider = createAnthropic({
-      apiKey: credentialValue,
+      apiKey: credential.value,
     });
 
     const systemPromptTemplate: string = data.systemPrompt

@@ -9,6 +9,7 @@ import {
   GoogleGenerativeAIProvider,
 } from "@ai-sdk/google";
 import { GeminiFormValues } from "./dialog";
+import prisma from "@/lib/db";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -76,12 +77,41 @@ export const geminiExecutor: NodeExecutor<GeminiFormValues> = async ({
     throw new NonRetriableError("Gemini Node: User prompt is required");
   }
 
-  const credentialValue: string | undefined =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!data.credentialId) {
+    await publish(
+      geminiChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw new NonRetriableError("Gemini Node: Credential is required");
+  }
+
+  const credential: { value: string } | null = await step.run(
+    "get-credential",
+    async () => {
+      return await prisma.credential.findUnique({
+        where: { id: data.credentialId },
+        select: {
+          value: true,
+        },
+      });
+    }
+  );
+
+  if (!credential) {
+    await publish(
+      geminiChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw new NonRetriableError("Gemini Node: Credential not found");
+  }
 
   try {
     const google: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
-      apiKey: credentialValue,
+      apiKey: credential.value,
     });
 
     const systemPromptTemplate: string = data.systemPrompt

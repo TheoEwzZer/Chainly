@@ -5,6 +5,7 @@ import { openaiChannel } from "@/inngest/channels/openai";
 import { generateText } from "ai";
 import { createOpenAI, OpenAIProvider } from "@ai-sdk/openai";
 import { OpenAIFormValues } from "./dialog";
+import prisma from "@/lib/db";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -72,23 +73,41 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
     throw new NonRetriableError("OpenAI Node: User prompt is required");
   }
 
-  const credentialValue: string | undefined = process.env.OPENAI_API_KEY;
-
-  if (!credentialValue) {
+  if (!data.credentialId) {
     await publish(
       openaiChannel().status({
         nodeId,
         status: "error",
       })
     );
-    throw new NonRetriableError(
-      "OpenAI Node: OPENAI_API_KEY environment variable is not set"
+    throw new NonRetriableError("OpenAI Node: Credential is required");
+  }
+
+  const credential: { value: string } | null = await step.run(
+    "get-credential",
+    async () => {
+      return await prisma.credential.findUnique({
+        where: { id: data.credentialId },
+        select: {
+          value: true,
+        },
+      });
+    }
+  );
+
+  if (!credential) {
+    await publish(
+      openaiChannel().status({
+        nodeId,
+        status: "error",
+      })
     );
+    throw new NonRetriableError("OpenAI Node: Credential not found");
   }
 
   try {
     const openai: OpenAIProvider = createOpenAI({
-      apiKey: credentialValue,
+      apiKey: credential.value,
     });
 
     const systemPromptTemplate: string = data.systemPrompt
