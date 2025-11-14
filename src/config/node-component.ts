@@ -7,6 +7,7 @@ import { GoogleFormTriggerNode } from "@/features/triggers/components/google-for
 import { ManualTriggerNode } from "@/features/triggers/components/manual-trigger/node";
 import { NodeType } from "@/generated/prisma/enums";
 import type { NodeTypes } from "@xyflow/react";
+import { DiscordNode } from "@/features/executions/components/discord/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -16,6 +17,7 @@ export const nodeComponents = {
   [NodeType.GEMINI]: GeminiNode,
   [NodeType.ANTHROPIC]: AnthropicNode,
   [NodeType.OPENAI]: OpenAINode,
+  [NodeType.DISCORD]: DiscordNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;

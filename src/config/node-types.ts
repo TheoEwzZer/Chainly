@@ -51,4 +51,10 @@ export const executionNodes: NodeTypeOption[] = [
     description: "Generates text using GPT models.",
     icon: "/logos/openai.svg",
   },
+  {
+    type: NodeType.DISCORD,
+    label: "Discord",
+    description: "Sends a message to a Discord channel.",
+    icon: "/logos/discord.svg",
+  },
 ];

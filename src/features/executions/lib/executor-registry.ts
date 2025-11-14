@@ -10,6 +10,7 @@ import { googleFormTriggerExecutor } from "@/features/triggers/components/google
 import { geminiExecutor } from "../components/gemini/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
 import { openaiExecutor } from "../components/openai/executor";
+import { discordExecutor } from "../components/discord/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
   context,
@@ -25,6 +26,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.GEMINI]: geminiExecutor,
   [NodeType.ANTHROPIC]: anthropicExecutor,
   [NodeType.OPENAI]: openaiExecutor,
+  [NodeType.DISCORD]: discordExecutor,
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor<any> => {
