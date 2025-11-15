@@ -10,6 +10,7 @@ import {
 } from "@ai-sdk/google";
 import { GeminiFormValues } from "./dialog";
 import prisma from "@/lib/db";
+import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -112,7 +113,7 @@ export const geminiExecutor: NodeExecutor<GeminiFormValues> = async ({
 
   try {
     const google: GoogleGenerativeAIProvider = createGoogleGenerativeAI({
-      apiKey: credential.value,
+      apiKey: decrypt(credential.value),
     });
 
     const systemPromptTemplate: string = data.systemPrompt

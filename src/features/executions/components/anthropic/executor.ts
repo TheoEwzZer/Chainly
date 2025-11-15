@@ -6,6 +6,7 @@ import { generateText } from "ai";
 import { AnthropicProvider, createAnthropic } from "@ai-sdk/anthropic";
 import { AnthropicFormValues } from "./dialog";
 import prisma from "@/lib/db";
+import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -108,7 +109,7 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
 
   try {
     const anthropic: AnthropicProvider = createAnthropic({
-      apiKey: credential.value,
+      apiKey: decrypt(credential.value),
     });
 
     const systemPromptTemplate: string = data.systemPrompt

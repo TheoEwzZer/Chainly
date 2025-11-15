@@ -6,6 +6,7 @@ import { generateText } from "ai";
 import { createOpenAI, OpenAIProvider } from "@ai-sdk/openai";
 import { OpenAIFormValues } from "./dialog";
 import prisma from "@/lib/db";
+import { decrypt } from "@/lib/encryption";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -108,7 +109,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
 
   try {
     const openai: OpenAIProvider = createOpenAI({
-      apiKey: credential.value,
+      apiKey: decrypt(credential.value),
     });
 
     const systemPromptTemplate: string = data.systemPrompt
