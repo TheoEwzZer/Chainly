@@ -1,0 +1,1024 @@
+# Developer Guide - Adding New Nodes
+
+This guide explains how to add new nodes to Chainly, a workflow automation platform similar to n8n, Zapier, or IFTTT.
+
+## Table of Contents
+
+1. [System Architecture](#system-architecture)
+2. [Node Overview](#node-overview)
+3. [Step-by-Step Guide](#step-by-step-guide)
+4. [Reference Examples](#reference-examples)
+5. [Best Practices](#best-practices)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
+## System Architecture
+
+### Execution Flow
+
+```
+┌─────────────────┐
+│   Workflow      │
+│   Execution     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐      ┌──────────────────┐
+│   Inngest       │─────▶│   Node Executor  │
+│   Functions     │      │   Registry       │
+└─────────────────┘      └────────┬─────────┘
+         │                        │
+         ▼                        ▼
+┌─────────────────┐      ┌──────────────────┐
+│   Realtime      │      │   Individual     │
+│   Channels      │      │   Executor       │
+└─────────────────┘      └──────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Node UI       │
+│   Component     │
+└─────────────────┘
+```
+
+### Main Components
+
+A complete node requires the following files:
+
+```
+src/features/executions/components/{node-name}/
+├── node.tsx           # React Flow UI component
+├── dialog.tsx         # Configuration dialog
+├── executor.ts        # Backend execution logic
+└── actions.ts         # Server actions for realtime tokens
+
+src/inngest/channels/
+└── {node-name}.ts     # Realtime communication channel
+
+prisma/
+└── schema.prisma      # DB schema update
+
+src/config/
+├── node-types.ts      # Node metadata
+├── node-component.ts  # Component registration
+└── ...
+```
+
+---
+
+## Node Overview
+
+### Node Types
+
+There are two main categories:
+
+1. **Trigger Nodes**: Start workflow execution
+
+   - `MANUAL_TRIGGER`: Manual trigger
+   - `GOOGLE_FORM_TRIGGER`: Google Forms trigger
+
+2. **Execution Nodes**: Execute actions in the workflow
+   - `HTTP_REQUEST`: HTTP requests
+   - `OPENAI`, `GEMINI`, `ANTHROPIC`: AI text generation
+   - `DISCORD`: Send Discord messages
+
+### Node Lifecycle
+
+1. **Configuration**: User configures the node via a dialog
+2. **Registration**: Data is stored in `node.data`
+3. **Execution**: Executor processes the node with workflow context
+4. **Status Updates**: Status is communicated via realtime channels
+5. **Result**: Results are added to the workflow context
+
+---
+
+## Step-by-Step Guide
+
+### Step 1: Add Node Type in Prisma
+
+**File: `prisma/schema.prisma`**
+
+```prisma
+enum NodeType {
+  INITIAL
+  MANUAL_TRIGGER
+  HTTP_REQUEST
+  GOOGLE_FORM_TRIGGER
+  ANTHROPIC
+  GEMINI
+  OPENAI
+  DISCORD
+  YOUR_NEW_NODE  // ← Add your type here
+}
+```
+
+If your node requires credentials (API keys, tokens, etc.), also add the type to the `CredentialType` enum:
+
+```prisma
+enum CredentialType {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+  YOUR_CREDENTIAL_TYPE  // ← Add your type here
+}
+```
+
+**Commands to run after modification:**
+
+```bash
+npx prisma format
+npx prisma generate
+npx prisma migrate dev --name add_your_node_type
+```
+
+---
+
+### Step 2: Create Realtime Channel
+
+Channels enable real-time communication of node execution status.
+
+**File: `src/inngest/channels/{your-node-name}.ts`**
+
+```typescript
+import { NodeStatus } from "@/components/react-flow/node-status-indicator";
+import { channel, topic } from "@inngest/realtime";
+
+export const yourNodeChannel = channel("your-node-execution").addTopic(
+  topic("status").type<{
+    nodeId: string;
+    status: NodeStatus;
+  }>()
+);
+```
+
+**Key Points:**
+
+- Channel name must be unique: `"your-node-execution"`
+- Topic `"status"` is standard for all nodes
+- `NodeStatus` can be: `"loading"`, `"success"`, `"error"`, or `"initial"`
+
+---
+
+### Step 3: Create Configuration Dialog
+
+The dialog allows users to configure the node.
+
+**File: `src/features/executions/components/{your-node-name}/dialog.tsx`**
+
+```typescript
+"use client";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldDescription,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useForm, Controller, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, type ReactElement } from "react";
+import z from "zod";
+
+// Define validation schema with Zod
+const formSchema = z.object({
+  variableName: z
+    .string()
+    .min(1, "Variable name is required")
+    .regex(
+      /^[A-Za-z_$][A-Za-z0-9_$]*$/,
+      "Variable name must start with a letter or underscore"
+    ),
+  // Add your specific fields here
+  yourField: z.string().min(1, "Your field is required"),
+  // If you need credentials:
+  credentialId: z.string().min(1, "Credential is required"),
+});
+
+export type YourNodeFormValues = z.infer<typeof formSchema>;
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: YourNodeFormValues) => void;
+  defaultValues?: Partial<YourNodeFormValues>;
+}
+
+export const YourNodeDialog = ({
+  open,
+  onOpenChange,
+  onSubmit,
+  defaultValues = {},
+}: Props): ReactElement => {
+  // If you use credentials:
+  // const { data: credentials } = useCredentialsByType("YOUR_CREDENTIAL_TYPE");
+
+  const form = useForm<YourNodeFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      variableName: defaultValues.variableName || "",
+      yourField: defaultValues.yourField || "",
+      credentialId: defaultValues.credentialId || "",
+    },
+  });
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        variableName: defaultValues.variableName || "",
+        yourField: defaultValues.yourField || "",
+        credentialId: defaultValues.credentialId || "",
+      });
+    }
+  }, [open, defaultValues, form]);
+
+  // To display an example of variable usage
+  const watchVariableName = useWatch({
+    control: form.control,
+    name: "variableName",
+  });
+
+  const handleSubmit = (values: YourNodeFormValues) => {
+    onSubmit(values);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Your Node Name</DialogTitle>
+          <DialogDescription>
+            Configure your node settings here.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="space-y-8 mt-4"
+        >
+          {/* Variable Name field (required for all nodes) */}
+          <Controller
+            name="variableName"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Variable Name</FieldLabel>
+                <FieldDescription>
+                  Use this name to reference the result in other nodes:{" "}
+                  {`{{${watchVariableName || "myVariable"}.result}}`}
+                </FieldDescription>
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="myVariable"
+                  aria-invalid={fieldState.invalid}
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          {/* Add your custom fields here */}
+          <Controller
+            name="yourField"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Your Field</FieldLabel>
+                <FieldDescription>
+                  Description of your field. Use {"{{variables}}"} to reference
+                  previous nodes.
+                </FieldDescription>
+                <Textarea
+                  {...field}
+                  id={field.name}
+                  placeholder="Enter your value here"
+                  aria-invalid={fieldState.invalid}
+                  className="min-h-[60px] font-mono"
+                />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+```
+
+**Key Points:**
+
+- Always include a `variableName` field to store results
+- Use Zod for form validation
+- Support Handlebars variables `{{variableName}}` in text fields
+- Handle credentials if necessary
+
+---
+
+### Step 4: Create Executor
+
+The executor contains the business logic that runs on the server side.
+
+**File: `src/features/executions/components/{your-node-name}/executor.ts`**
+
+```typescript
+import {
+  NodeExecutor,
+  WorkflowContext,
+} from "@/features/executions/components/types";
+import { NonRetriableError } from "inngest";
+import Handlebars, { SafeString } from "handlebars";
+import { yourNodeChannel } from "@/inngest/channels/your-node-name";
+import { YourNodeFormValues } from "./dialog";
+import prisma from "@/lib/db";
+import { decrypt } from "@/lib/encryption"; // If you use credentials
+
+// Register Handlebars helpers for templating
+Handlebars.registerHelper("json", (context: any): SafeString => {
+  const jsonString = JSON.stringify(context, null, 2);
+  return new Handlebars.SafeString(jsonString);
+});
+
+Handlebars.registerHelper("lookup", (obj: any, key: string): any => {
+  if (obj == null || typeof obj !== "object") {
+    return undefined;
+  }
+  return obj[key];
+});
+
+// Transform bracket notation to lookup helper
+const transformBracketNotation = (template: string): string => {
+  return template.replaceAll(
+    /\{\{([^}]*?)\[["']([^"']+)["']\]\}\}/g,
+    (_: string, path: string, key: string): string => {
+      const trimmedPath = path.trim();
+      return `{{lookup ${trimmedPath} "${key}"}}`;
+    }
+  );
+};
+
+export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
+  data,
+  nodeId,
+  context,
+  step,
+  publish,
+  userId,
+}) => {
+  // 1. Publish "loading" status
+  await publish(
+    yourNodeChannel().status({
+      nodeId,
+      status: "loading",
+    })
+  );
+
+  // 2. Validate required fields
+  if (!data.variableName) {
+    await publish(
+      yourNodeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw new NonRetriableError("Your Node: Variable name is required");
+  }
+
+  if (!data.yourField) {
+    await publish(
+      yourNodeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw new NonRetriableError("Your Node: Your field is required");
+  }
+
+  // 3. Retrieve credentials if necessary
+  if (data.credentialId) {
+    const credential = await step.run("get-credential", async () => {
+      return await prisma.credential.findUnique({
+        where: { id: data.credentialId, userId },
+        select: { value: true },
+      });
+    });
+
+    if (!credential) {
+      await publish(
+        yourNodeChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+      throw new NonRetriableError("Your Node: Credential not found");
+    }
+
+    // Decrypt API key
+    const apiKey = decrypt(credential.value);
+  }
+
+  try {
+    // 4. Process Handlebars templates
+    const fieldTemplate = transformBracketNotation(data.yourField);
+    const renderedField = Handlebars.compile(fieldTemplate)(context);
+
+    // 5. Execute business logic in an Inngest step
+    const result: WorkflowContext = await step.run(
+      "your-node-logic",
+      async () => {
+        // *** YOUR BUSINESS LOGIC HERE ***
+        // Example: API call, data processing, etc.
+
+        const processedResult = {
+          // Your results
+          result: "Your processed result",
+          data: renderedField,
+        };
+
+        // Return enriched context
+        return {
+          ...context,
+          [data.variableName]: processedResult,
+        };
+      }
+    );
+
+    // 6. Publish "success" status
+    await publish(
+      yourNodeChannel().status({
+        nodeId,
+        status: "success",
+      })
+    );
+
+    return result;
+  } catch (error) {
+    // 7. Handle errors
+    await publish(
+      yourNodeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw error;
+  }
+};
+```
+
+**Key Points:**
+
+- Always publish status via the channel (`loading`, `success`, `error`)
+- Use `step.run()` for all important operations (enables retry and monitoring)
+- Validate all required fields at the beginning
+- Handle errors and update status accordingly
+- Return a new enriched context with the node's results
+- Support Handlebars templates for dynamic variables
+
+---
+
+### Step 5: Create Server Actions
+
+Server actions generate tokens for realtime connections.
+
+**File: `src/features/executions/components/{your-node-name}/actions.ts`**
+
+```typescript
+"use server";
+
+import { getSubscriptionToken, type Realtime } from "@inngest/realtime";
+import { yourNodeChannel } from "@/inngest/channels/your-node-name";
+import { inngest } from "@/inngest/client";
+
+export type YourNodeSubscriptionToken = Realtime.Token<
+  typeof yourNodeChannel,
+  ["status"]
+>;
+
+export async function fetchYourNodeRealtimeToken(): Promise<YourNodeSubscriptionToken> {
+  return await getSubscriptionToken(inngest, {
+    channel: yourNodeChannel(),
+    topics: ["status"],
+  });
+}
+```
+
+---
+
+### Step 6: Create Node UI Component
+
+The Node component is displayed in the React Flow canvas.
+
+**File: `src/features/executions/components/{your-node-name}/node.tsx`**
+
+```typescript
+import { memo, useState, type ReactElement } from "react";
+import { type NodeProps, type Node, useReactFlow } from "@xyflow/react";
+import { BaseExecutionNode } from "../base-execution-node";
+import { YourNodeDialog, YourNodeFormValues } from "./dialog";
+import { yourNodeChannel } from "@/inngest/channels/your-node-name";
+import { fetchYourNodeRealtimeToken } from "./actions";
+import { useNodeStatus } from "@/hooks/use-node-status";
+
+type YourNodeType = Node<YourNodeFormValues>;
+
+export const YourNode = memo((props: NodeProps<YourNodeType>): ReactElement => {
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const { setNodes } = useReactFlow();
+
+  // Hook to manage realtime status
+  const nodeStatus = useNodeStatus({
+    nodeId: props.id,
+    channel: yourNodeChannel().name,
+    topic: "status",
+    refreshToken: fetchYourNodeRealtimeToken,
+  });
+
+  const handleSettings = (): void => {
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = (values: YourNodeFormValues): void => {
+    setNodes((nodes: Node[]): Node[] =>
+      nodes.map((node: Node): Node => {
+        if (node.id === props.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...values,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  };
+
+  const nodeData = props.data as YourNodeFormValues;
+
+  // Display a short description of the node
+  const description: string = nodeData?.yourField
+    ? nodeData.yourField.slice(0, 50) +
+      (nodeData.yourField.length > 50 ? "..." : "")
+    : "Not configured";
+
+  return (
+    <>
+      <BaseExecutionNode
+        {...props}
+        id={props.id}
+        icon="/logos/your-node-logo.svg" // Add your logo
+        name="Your Node Name"
+        status={nodeStatus}
+        description={description}
+        onSettings={handleSettings}
+        onDoubleClick={handleSettings}
+      />
+      <YourNodeDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleSubmit}
+        defaultValues={nodeData}
+      />
+    </>
+  );
+});
+
+YourNode.displayName = "YourNode";
+```
+
+**Key Points:**
+
+- Use `BaseExecutionNode` for standard appearance
+- Handle dialog opening on settings click or double-click
+- Display a short description based on configuration
+- Add a logo in `public/logos/`
+
+---
+
+### Step 7: Register Node in Configuration
+
+#### 7.1 Add to Metadata
+
+**File: `src/config/node-types.ts`**
+
+```typescript
+import { NodeType } from "@/generated/prisma/enums";
+import { YourIcon } from "lucide-react"; // or import an icon
+
+export const executionNodes: NodeTypeOption[] = [
+  // ... existing nodes
+  {
+    type: NodeType.YOUR_NEW_NODE,
+    label: "Your Node Name",
+    description: "Description of what your node does.",
+    icon: "/logos/your-node-logo.svg", // or YourIcon
+  },
+];
+```
+
+#### 7.2 Register Component
+
+**File: `src/config/node-component.ts`**
+
+```typescript
+import { YourNode } from "@/features/executions/components/your-node-name/node";
+import { NodeType } from "@/generated/prisma/enums";
+import type { NodeTypes } from "@xyflow/react";
+
+export const nodeComponents = {
+  // ... existing nodes
+  [NodeType.YOUR_NEW_NODE]: YourNode,
+} as const satisfies NodeTypes;
+```
+
+#### 7.3 Register Executor
+
+**File: `src/features/executions/lib/executor-registry.ts`**
+
+```typescript
+import { yourNodeExecutor } from "../components/your-node-name/executor";
+import { NodeType } from "@/generated/prisma/enums";
+
+export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
+  // ... existing executors
+  [NodeType.YOUR_NEW_NODE]: yourNodeExecutor,
+} as const;
+```
+
+#### 7.4 Add Channel to Inngest
+
+**File: `src/inngest/functions.ts`**
+
+```typescript
+import { yourNodeChannel } from "./channels/your-node-name";
+
+export const executeWorkflow = inngest.createFunction(
+  {
+    id: "execute-workflow",
+    // ... configuration
+  },
+  {
+    event: "workflow/execute.workflow",
+    channels: [
+      // ... existing channels
+      yourNodeChannel(),
+    ],
+  },
+  async ({ event, step, publish }) => {
+    // ... execution logic
+  }
+);
+```
+
+---
+
+### Step 8: Add Credentials Support (Optional)
+
+If your node requires credentials:
+
+#### 8.1 Update Credentials Component
+
+**File: `src/features/credentials/components/credential.tsx`**
+
+```typescript
+import { CredentialType } from "@/generated/prisma/enums";
+
+const credentialTypeOptions = [
+  // ... existing options
+  {
+    label: "Your Service",
+    value: CredentialType.YOUR_CREDENTIAL_TYPE,
+    logo: "/logos/your-service.svg",
+  },
+];
+```
+
+#### 8.2 Update Credentials List
+
+**File: `src/features/credentials/components/credentials.tsx`**
+
+```typescript
+export enum CredentialType {
+  OPENAI = "OPENAI",
+  ANTHROPIC = "ANTHROPIC",
+  GEMINI = "GEMINI",
+  YOUR_CREDENTIAL_TYPE = "YOUR_CREDENTIAL_TYPE", // Add here
+}
+
+const credentialLogos: Record<CredentialType, string> = {
+  // ... existing logos
+  [CredentialType.YOUR_CREDENTIAL_TYPE]: "/logos/your-service.svg",
+};
+```
+
+---
+
+## Reference Examples
+
+### Simple Example: Discord Node
+
+The Discord node is an excellent example of a node without complex credentials:
+
+```typescript
+// Files to review:
+// - src/features/executions/components/discord/node.tsx
+// - src/features/executions/components/discord/dialog.tsx
+// - src/features/executions/components/discord/executor.ts
+// - src/inngest/channels/discord.ts
+```
+
+**Features:**
+
+- Send messages via webhook
+- Support Handlebars templates
+- No encrypted credentials (webhook URL in plain text)
+
+### Example with Credentials: OpenAI Node
+
+The OpenAI node shows how to handle API keys:
+
+```typescript
+// Files to review:
+// - src/features/executions/components/openai/node.tsx
+// - src/features/executions/components/openai/dialog.tsx
+// - src/features/executions/components/openai/executor.ts
+// - src/inngest/channels/openai.ts
+```
+
+**Features:**
+
+- Use encrypted credentials
+- Model selection
+- Support system and user prompts
+- Integration with AI SDK
+
+### HTTP Example: HTTP Request Node
+
+The HTTP Request node shows how to make external API calls:
+
+```typescript
+// Files to review:
+// - src/features/executions/components/http-request/node.tsx
+// - src/features/executions/components/http-request/dialog.tsx
+// - src/features/executions/components/http-request/executor.ts
+// - src/features/executions/components/http-request/constants.ts
+```
+
+**Features:**
+
+- Support multiple HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- JSON body handling with templates
+- No credentials (public endpoints or tokens in URL)
+
+---
+
+## Best Practices
+
+### 1. Error Handling
+
+```typescript
+try {
+  // Your logic
+} catch (error) {
+  await publish(
+    yourNodeChannel().status({
+      nodeId,
+      status: "error",
+    })
+  );
+
+  // Use NonRetriableError for business errors
+  if (error instanceof YourBusinessError) {
+    throw new NonRetriableError(`Your Node: ${error.message}`);
+  }
+
+  // Rethrow other errors (they will be retried by Inngest)
+  throw error;
+}
+```
+
+### 2. Data Validation
+
+- Validate on the client side with Zod in the dialog
+- Re-validate on the server side in the executor
+- Provide clear and actionable error messages
+
+### 3. Handlebars Templates
+
+Always support variables in text fields:
+
+```typescript
+const template = transformBracketNotation(data.yourField);
+const rendered = Handlebars.compile(template)(context);
+```
+
+**Supported Formats:**
+
+- `{{variableName}}`: simple access
+- `{{variableName.property}}`: property access
+- `{{variableName["property"]}}`: bracket notation (transformed to lookup helper)
+- `{{json variableName}}`: JSON stringification
+
+### 4. Variable Naming
+
+- Use descriptive names for `variableName`
+- Suggest a default name in the placeholder
+- Validate that the name is a valid JavaScript identifier
+
+### 5. Realtime Status
+
+Always publish status in this order:
+
+```typescript
+// 1. At the beginning
+await publish(channel().status({ nodeId, status: "loading" }));
+
+// 2. On success
+await publish(channel().status({ nodeId, status: "success" }));
+
+// 3. On error
+await publish(channel().status({ nodeId, status: "error" }));
+```
+
+### 6. Workflow Context
+
+The context is an object shared between all nodes:
+
+```typescript
+// Read
+const previousNodeData = context.myPreviousNode;
+
+// Write
+return {
+  ...context,
+  [data.variableName]: {
+    result: "your result",
+    metadata: "additional data",
+  },
+};
+```
+
+### 7. Performance
+
+- Use `step.run()` for all I/O operations
+- Avoid blocking synchronous operations
+- Limit the size of data stored in context
+
+### 8. Security
+
+- Always decrypt credentials on the server side
+- Never expose API keys in logs
+- Validate URLs and user inputs
+- Use `userId` to verify permissions
+
+---
+
+## Troubleshooting
+
+### Node doesn't appear in the list
+
+- ✅ Check that the type is added in `prisma/schema.prisma`
+- ✅ Run `npx prisma generate`
+- ✅ Check that the node is added in `node-types.ts`
+- ✅ Restart the development server
+
+### Status doesn't update
+
+- ✅ Check that the channel is created in `src/inngest/channels/`
+- ✅ Check that the channel is added in `src/inngest/functions.ts`
+- ✅ Check that `useNodeStatus` uses the correct channel name
+- ✅ Check that server actions return the correct token
+
+### Handlebars templates don't work
+
+- ✅ Call `transformBracketNotation()` on templates
+- ✅ Register the `json` and `lookup` helpers
+- ✅ Check that the context contains the referenced variables
+
+### Executor doesn't run
+
+- ✅ Check that the executor is registered in `executor-registry.ts`
+- ✅ Check that the type matches exactly in all files
+- ✅ Check Inngest logs to see errors
+- ✅ Check that the workflow doesn't have cyclic dependencies
+
+### Credentials are not available
+
+- ✅ Add the type in `CredentialType` enum (schema.prisma)
+- ✅ Update `credential.tsx` with the new type
+- ✅ Update `credentials.tsx` with the logo
+- ✅ Create a credential via the interface before testing
+
+### TypeScript compilation error
+
+- ✅ Run `npx prisma generate` to regenerate types
+- ✅ Check imports from `@/generated/prisma/`
+- ✅ Restart TypeScript server in your IDE
+
+---
+
+## Complete Checklist
+
+Use this checklist to ensure all files are in place:
+
+### Required Files
+
+- [ ] `prisma/schema.prisma` - Add NodeType
+- [ ] `src/inngest/channels/{node-name}.ts` - Realtime channel
+- [ ] `src/features/executions/components/{node-name}/node.tsx` - UI component
+- [ ] `src/features/executions/components/{node-name}/dialog.tsx` - Configuration dialog
+- [ ] `src/features/executions/components/{node-name}/executor.ts` - Execution logic
+- [ ] `src/features/executions/components/{node-name}/actions.ts` - Server actions
+- [ ] `src/config/node-types.ts` - Node metadata
+- [ ] `src/config/node-component.ts` - Component registration
+- [ ] `src/features/executions/lib/executor-registry.ts` - Executor registration
+- [ ] `src/inngest/functions.ts` - Channel addition
+
+### Optional Files
+
+- [ ] `src/features/executions/components/{node-name}/constants.ts` - Specific constants
+- [ ] `public/logos/{node-name}.svg` - Node logo
+- [ ] `prisma/schema.prisma` - CredentialType (if needed)
+- [ ] `src/features/credentials/components/credential.tsx` - Credentials support
+- [ ] `src/features/credentials/components/credentials.tsx` - Credential logo
+
+### Commands to Run
+
+- [ ] `npx prisma format` - Format schema
+- [ ] `npx prisma generate` - Generate types
+- [ ] `npx prisma migrate dev --name add_{node_name}` - Create migration
+- [ ] Restart development server
+
+### Tests
+
+- [ ] Node appears in the nodes list
+- [ ] Dialog opens on settings click
+- [ ] Form validates correctly
+- [ ] Executor runs without errors
+- [ ] Realtime statuses update
+- [ ] Results are accessible in subsequent nodes
+- [ ] Handlebars templates work
+- [ ] Credentials are retrieved and decrypted (if applicable)
+
+---
+
+## Additional Resources
+
+### External Documentation
+
+- [Inngest Documentation](https://www.inngest.com/docs) - To understand steps, retry, and realtime
+- [React Flow Documentation](https://reactflow.dev/) - To customize node appearance
+- [Handlebars Documentation](https://handlebarsjs.com/) - For templates
+- [Zod Documentation](https://zod.dev/) - For form validation
+- [Prisma Documentation](https://www.prisma.io/docs) - For database schema
+
+### Reference Source Code
+
+Existing nodes are your best references:
+
+1. **Simple Node**: `discord` - Basic example without complexity
+2. **AI Node**: `openai`, `gemini`, `anthropic` - AI SDK integration
+3. **HTTP Node**: `http-request` - External API calls
+4. **Trigger Node**: `manual-trigger`, `google-form-trigger` - Workflow triggering
+
+---
+
+## Support and Contribution
+
+If you encounter problems or have questions:
+
+1. Review existing node examples
+2. Check Inngest logs for execution errors
+3. Use React development tools to debug the UI
+4. Consult external dependency documentation
+
+Happy coding! 🚀
