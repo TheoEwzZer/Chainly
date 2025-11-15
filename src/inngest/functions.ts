@@ -1,7 +1,14 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
 import prisma from "@/lib/db";
-import type { Connection, Node, Workflow } from "@/generated/prisma/client";
+import {
+  ExecutionStatus,
+  type Connection,
+  type Execution,
+  type Node,
+  type Workflow,
+  Prisma,
+} from "@/generated/prisma/client";
 import type { Jsonify } from "inngest/types";
 import { topologicalSort } from "./utils";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
@@ -21,6 +28,16 @@ export const executeWorkflow = inngest.createFunction(
     id: "execute-workflow",
     retries: 1,
     timeouts: { start: "10s" },
+    onFailure: async ({ event }) => {
+      return prisma.execution.update({
+        where: { inngestEventId: event.data.event.id },
+        data: {
+          status: ExecutionStatus.FAILED,
+          error: event.data.error.message,
+          errorStack: event.data.error.stack,
+        },
+      });
+    },
   },
   {
     event: "workflow/execute.workflow",
@@ -34,11 +51,22 @@ export const executeWorkflow = inngest.createFunction(
     ],
   },
   async ({ event, step, publish }) => {
-    const { workflowId } = event.data;
+    const inngestEventId: string | undefined = event.id;
+    const { workflowId } = event.data as { workflowId: string };
+
+    if (!inngestEventId) {
+      throw new NonRetriableError("Inngest event ID is required");
+    }
 
     if (!workflowId) {
       throw new NonRetriableError("Workflow ID is required");
     }
+
+    await step.run("create-execution", async (): Promise<Execution> => {
+      return await prisma.execution.create({
+        data: { workflowId, inngestEventId },
+      });
+    });
 
     const sortedNodes: Jsonify<Node>[] = await step.run(
       "prepare-workflow",
@@ -98,6 +126,17 @@ export const executeWorkflow = inngest.createFunction(
         userId,
       });
     }
+
+    await step.run("update-execution", async (): Promise<Execution> => {
+      return await prisma.execution.update({
+        where: { inngestEventId, workflowId },
+        data: {
+          status: ExecutionStatus.SUCCESS,
+          completedAt: new Date(),
+          output: context as Prisma.InputJsonValue,
+        },
+      });
+    });
 
     return { workflowId, result: context };
   }

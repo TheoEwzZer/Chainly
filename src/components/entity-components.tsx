@@ -90,7 +90,7 @@ export const EntityHeader = ({
 type EntityContainerProps = {
   children: ReactNode;
   header: ReactElement;
-  search: ReactElement;
+  search?: ReactElement;
   pagination: ReactElement;
 };
 
@@ -304,7 +304,7 @@ export const ErrorView = ({ message }: StateViewProps): ReactElement => {
 };
 
 interface EmptyViewProps extends StateViewProps {
-  onNew: () => void;
+  onNew?: () => void;
 }
 
 export const EmptyView = ({ message, onNew }: EmptyViewProps): ReactElement => {

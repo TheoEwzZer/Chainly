@@ -2,6 +2,7 @@ import { Connection, Node, NodeType } from "@/generated/prisma/client";
 import topoSort from "toposort";
 import { inngest } from "./client";
 import { NodeTypeOption, triggerNodes } from "@/config/node-types";
+import { createId } from "@paralleldrive/cuid2";
 
 const findReachableNodes = (
   triggerNode: Node,
@@ -110,6 +111,7 @@ export const sendWorkflowExecution = async (data: {
   [key: string]: unknown;
 }) => {
   return inngest.send({
+    id: createId(),
     name: "workflow/execute.workflow",
     data,
   });
