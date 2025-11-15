@@ -17,7 +17,6 @@ import {
   useSuspenseWorkflows,
 } from "../hooks/use-workflows";
 import type { ReactElement, ReactNode } from "react";
-import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { useRouter } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { useWorkflowsParams } from "../hooks/use-workflows-params";
@@ -25,6 +24,7 @@ import { useEntitySearch } from "@/hooks/use-entity-search";
 import type { Workflow } from "@/generated/prisma/client";
 import { WorkflowIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 export const WorkflowsSearch = (): ReactElement => {
   const [params, setParamsAsync] = useWorkflowsParams();
@@ -62,7 +62,6 @@ export const WorkflowsList = (): ReactElement => {
 
 export const WorkflowsHeader = ({ disabled }: { disabled: boolean }) => {
   const createWorkflow = useCreateWorkflow();
-  const { handleError, modal } = useUpgradeModal();
   const router: AppRouterInstance = useRouter();
 
   const handleCreate = (): void => {
@@ -71,23 +70,20 @@ export const WorkflowsHeader = ({ disabled }: { disabled: boolean }) => {
         router.push(`/workflows/${data.id}`);
       },
       onError: (error) => {
-        handleError(error);
+        toast.error(`Failed to create workflow: ${error.message}`);
       },
     });
   };
 
   return (
-    <>
-      {modal}
-      <EntityHeader
-        title="Workflows"
-        description="Create and manage your workflows"
-        onNew={handleCreate}
-        newButtonLabel="New Workflow"
-        disabled={disabled}
-        isCreating={createWorkflow.isPending}
-      />
-    </>
+    <EntityHeader
+      title="Workflows"
+      description="Create and manage your workflows"
+      onNew={handleCreate}
+      newButtonLabel="New Workflow"
+      disabled={disabled}
+      isCreating={createWorkflow.isPending}
+    />
   );
 };
 
@@ -129,13 +125,12 @@ export const WorkflowsError = (): ReactElement => {
 
 export const WorkflowsEmpty = (): ReactElement => {
   const createWorkflow = useCreateWorkflow();
-  const { handleError, modal } = useUpgradeModal();
   const router: AppRouterInstance = useRouter();
 
   const handleCreate = (): void => {
     createWorkflow.mutate(undefined, {
       onError: (error) => {
-        handleError(error);
+        toast.error(`Failed to create workflow: ${error.message}`);
       },
       onSuccess: (data: Workflow): void => {
         router.push(`/workflows/${data.id}`);
@@ -143,12 +138,7 @@ export const WorkflowsEmpty = (): ReactElement => {
     });
   };
 
-  return (
-    <>
-      {modal}
-      <EmptyView message="No workflows found" onNew={handleCreate} />
-    </>
-  );
+  return <EmptyView message="No workflows found" onNew={handleCreate} />;
 };
 
 export const WorkflowsItem = ({ data }: { data: Workflow }) => {

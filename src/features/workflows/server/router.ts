@@ -9,7 +9,6 @@ import {
 import prisma from "@/lib/db";
 import {
   createTRPCRouter,
-  premiumProcedure,
   protectedProcedure,
 } from "@/trpc/init";
 import { generateSlug } from "random-word-slugs";
@@ -74,7 +73,7 @@ export const workflowsRouter = createTRPCRouter({
       const { nodes, connections, ...workflowData } = workflow;
       return workflowData;
     }),
-  create: premiumProcedure.mutation(({ ctx }) => {
+  create: protectedProcedure.mutation(({ ctx }) => {
     return prisma.workflow.create({
       data: {
         name: generateSlug(3),

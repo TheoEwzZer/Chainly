@@ -25,7 +25,6 @@ import type { ReactElement } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { authClient } from "@/lib/auth-client";
-import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscription";
 
 const menuItems = [
   {
@@ -53,8 +52,6 @@ const menuItems = [
 export const AppSidebar = (): ReactElement => {
   const router: AppRouterInstance = useRouter();
   const pathname: string = usePathname();
-
-  const { hasActiveSubscription, isLoading } = useHasActiveSubscription();
 
   return (
     <Sidebar collapsible="icon">
@@ -104,28 +101,6 @@ export const AppSidebar = (): ReactElement => {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {!hasActiveSubscription && !isLoading && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Upgrade to Pro"
-                className="gap-x-4 h-10 px-4"
-                onClick={() => authClient.checkout({ slug: "pro" })}
-              >
-                <StarIcon className="size-4" />
-                <span className="font-semibold text-sm">Upgrade to Pro</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Billing Portal"
-              className="gap-x-4 h-10 px-4"
-              onClick={() => authClient.customer.portal()}
-            >
-              <CreditCardIcon className="size-4" />
-              <span className="font-semibold text-sm">Billing Portal</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Logout"
