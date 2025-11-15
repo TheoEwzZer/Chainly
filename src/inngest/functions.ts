@@ -22,6 +22,7 @@ import { googleFormTriggerChannel } from "./channels/google-form-trigger";
 import { geminiChannel } from "./channels/gemini";
 import { anthropicChannel } from "./channels/anthropic";
 import { openaiChannel } from "./channels/openai";
+import { discordChannel } from "./channels/discord";
 
 export const executeWorkflow = inngest.createFunction(
   {
@@ -48,6 +49,7 @@ export const executeWorkflow = inngest.createFunction(
       geminiChannel(),
       anthropicChannel(),
       openaiChannel(),
+      discordChannel(),
     ],
   },
   async ({ event, step, publish }) => {
