@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "inngest:dev": "inngest-cli dev",
-    "dev:all": "mprocs",
-    "postinstall": "npx prisma generate"
+    "dev:all": "mprocs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.44",
