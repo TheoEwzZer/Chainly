@@ -1,17 +1,15 @@
-import { defineConfig } from "prisma/config";
-import { config } from "dotenv";
-import { resolve } from "node:path";
+import "dotenv/config";
 
-// Load environment variables from .env file
-config({ path: resolve(process.cwd(), ".env") });
+import path from "node:path";
+import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: path.join("prisma", "schema.prisma"),
   migrations: {
-    path: "prisma/migrations",
+    path: path.join("prisma", "migrations"),
   },
   engine: "classic",
   datasource: {
-    url: process.env.DATABASE_URL as string,
+    url: env("DATABASE_URL"),
   },
 });
