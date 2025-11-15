@@ -1,0 +1,19 @@
+{
+  "name": "Chainly - Workflow Automation Platform",
+  "short_name": "Chainly",
+  "description": "Build powerful workflow automations. Connect your favorite tools and automate repetitive tasks with an intuitive visual workflow builder.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF7A00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logos/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business", "utilities"]
+}

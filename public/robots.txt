@@ -1,0 +1,15 @@
+# Robots.txt for Chainly
+
+User-agent: *
+Allow: /
+
+# Disallow API routes
+Disallow: /api/
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /register
+
+# Sitemap
+Sitemap: https://chainly.vercel.app/sitemap.xml
+
