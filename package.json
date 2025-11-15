@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "inngest:dev": "inngest-cli dev",
-    "dev:all": "mprocs"
+    "dev:all": "mprocs",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.44",
