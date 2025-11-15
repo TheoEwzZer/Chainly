@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
-import type { ReactElement } from "react";
+import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import type { NextFontWithVariable } from "next/dist/compiled/@next/font";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: ReactElement;
-}>): ReactElement {
+  children: ReactNode;
+}>): ReactNode {
   return (
     <html lang="en">
       <body
