@@ -49,6 +49,11 @@ const credentialTypeOptions = [
     logo: "/logos/anthropic.svg",
   },
   { label: "Gemini", value: CredentialType.GEMINI, logo: "/logos/gemini.svg" },
+  {
+    label: "Discord",
+    value: CredentialType.DISCORD,
+    logo: "/logos/discord.svg",
+  },
 ];
 
 interface CredentialFormProps {

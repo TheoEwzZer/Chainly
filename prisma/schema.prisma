@@ -91,6 +91,7 @@ enum CredentialType {
   OPENAI
   ANTHROPIC
   GEMINI
+  DISCORD
 }
 
 model Workflow {

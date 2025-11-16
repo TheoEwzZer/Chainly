@@ -120,12 +120,14 @@ export enum CredentialType {
   OPENAI = "OPENAI",
   ANTHROPIC = "ANTHROPIC",
   GEMINI = "GEMINI",
+  DISCORD = "DISCORD",
 }
 
 const credentialLogos: Record<CredentialType, string> = {
   [CredentialType.OPENAI]: "/logos/openai.svg",
   [CredentialType.ANTHROPIC]: "/logos/anthropic.svg",
   [CredentialType.GEMINI]: "/logos/gemini.svg",
+  [CredentialType.DISCORD]: "/logos/discord.svg",
 };
 
 export const CredentialsItem = ({ data }: { data: Credential }) => {
