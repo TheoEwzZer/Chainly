@@ -28,43 +28,67 @@ export const workflowsRouter = createTRPCRouter({
         },
       });
 
-      try {
-        topologicalSort(workflow.nodes, workflow.connections);
-      } catch (error) {
-        if (error instanceof Error && error.message.includes("Cyclic")) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Cyclic dependency detected in workflow",
-          });
-        }
-        if (
-          error instanceof Error &&
-          error.message.includes(
-            "You must have at least one connection between reachable nodes"
-          )
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "You must have at least one connection between reachable nodes",
-          });
-        }
-        if (error instanceof Error && error.message.includes("No trigger")) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "No trigger node found in workflow",
-          });
-        }
+      const manualTriggerNodes: PrismaNode[] = workflow.nodes.filter(
+        (node: PrismaNode): boolean => node.type === NodeType.MANUAL_TRIGGER
+      );
+
+      if (manualTriggerNodes.length === 0) {
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to validate workflow",
+          code: "BAD_REQUEST",
+          message: "No manual trigger node found in workflow",
         });
       }
 
-      await sendWorkflowExecution({ workflowId: input.id });
+      for (const manualTrigger of manualTriggerNodes) {
+        try {
+          topologicalSort(
+            workflow.nodes,
+            workflow.connections,
+            manualTrigger.id
+          );
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Cyclic")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Cyclic dependency detected in workflow",
+            });
+          }
+          if (
+            error instanceof Error &&
+            error.message.includes(
+              "You must have at least one connection between reachable nodes"
+            )
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "You must have at least one connection between reachable nodes",
+            });
+          }
+          if (error instanceof Error && error.message.includes("No trigger")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "No trigger node found in workflow",
+            });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Failed to validate workflow",
+          });
+        }
+      }
+
+      await Promise.all(
+        manualTriggerNodes.map((manualTrigger: PrismaNode) =>
+          sendWorkflowExecution({
+            workflowId: input.id,
+            triggerNodeId: manualTrigger.id,
+          })
+        )
+      );
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { nodes, connections, ...workflowData } = workflow;

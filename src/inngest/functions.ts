@@ -78,6 +78,8 @@ export const executeWorkflow = inngest.createFunction(
       }
     );
 
+    const triggerNodeId: string | undefined = (event.data as { triggerNodeId?: string }).triggerNodeId;
+
     const {
       sortedNodes,
       connections,
@@ -103,7 +105,8 @@ export const executeWorkflow = inngest.createFunction(
             return {
               sortedNodes: topologicalSort(
                 workflow.nodes,
-                workflow.connections
+                workflow.connections,
+                triggerNodeId
               ),
               connections: workflow.connections,
             };

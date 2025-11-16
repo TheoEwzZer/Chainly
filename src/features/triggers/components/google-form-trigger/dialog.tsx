@@ -17,9 +17,10 @@ import { generateGoogleFormScript } from "./utils";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  nodeId?: string;
 }
 
-export const GoogleFormTriggerDialog = ({ open, onOpenChange }: Props) => {
+export const GoogleFormTriggerDialog = ({ open, onOpenChange, nodeId }: Props) => {
   const params: { workflowId: string } = useParams<{ workflowId: string }>();
   const { workflowId } = params;
 
@@ -35,7 +36,9 @@ export const GoogleFormTriggerDialog = ({ open, onOpenChange }: Props) => {
 
   const baseUrl: string =
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const webhookUrl: string = `${baseUrl}/api/webhooks/google-form?workflowId=${workflowId}`;
+  const webhookUrl: string = nodeId
+    ? `${baseUrl}/api/webhooks/google-form?workflowId=${workflowId}&nodeId=${nodeId}`
+    : `${baseUrl}/api/webhooks/google-form?workflowId=${workflowId}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

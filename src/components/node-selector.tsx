@@ -13,7 +13,6 @@ import {
 import Image from "next/image";
 import { Separator } from "./ui/separator";
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { toast } from "sonner";
 import { createId } from "@paralleldrive/cuid2";
 import type { Node } from "@xyflow/react";
 import {
@@ -33,25 +32,10 @@ export function NodeSelector({
   onOpenChange,
   children,
 }: Readonly<NodeSelectorProps>): ReactElement {
-  const { setNodes, getNodes, screenToFlowPosition } = useReactFlow();
+  const { setNodes, screenToFlowPosition } = useReactFlow();
 
   const handleNodeSelect = useCallback(
     (selection: NodeTypeOption): void => {
-      const triggerTypes = new Set(
-        triggerNodes.map((n: NodeTypeOption): NodeType => n.type)
-      );
-
-      if (triggerTypes.has(selection.type)) {
-        const nodes: Node[] = getNodes();
-        const hasTrigger: boolean = nodes.some((node: Node): boolean =>
-          triggerTypes.has(node.type as NodeType)
-        );
-        if (hasTrigger) {
-          toast.error("You can only have one trigger per workflow");
-          return;
-        }
-      }
-
       setNodes((nodes: Node[]): Node[] => {
         const hasInitialTrigger: boolean = nodes.some(
           (node: Node): boolean => node.type === NodeType.INITIAL
@@ -81,7 +65,7 @@ export function NodeSelector({
 
       onOpenChange(false);
     },
-    [getNodes, onOpenChange, screenToFlowPosition, setNodes]
+    [onOpenChange, screenToFlowPosition, setNodes]
   );
 
   return (

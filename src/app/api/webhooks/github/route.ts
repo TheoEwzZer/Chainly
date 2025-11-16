@@ -102,6 +102,7 @@ export async function POST(
 
     await sendWorkflowExecution({
       workflowId,
+      triggerNodeId: nodeId,
       initialData: {
         [variableName]: githubData,
       },

@@ -33,7 +33,7 @@ export const GoogleFormTriggerNode = memo((props: NodeProps): ReactElement => {
         onSettings={handleSettings}
         onDoubleClick={handleSettings}
       />
-      <GoogleFormTriggerDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <GoogleFormTriggerDialog open={dialogOpen} onOpenChange={setDialogOpen} nodeId={props.id} />
     </>
   );
 });

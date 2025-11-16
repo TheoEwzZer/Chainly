@@ -36,48 +36,72 @@ const findReachableNodes = (
 
 export const topologicalSort = (
   nodes: Node[],
-  connections: Connection[]
+  connections: Connection[],
+  triggerNodeId?: string
 ): Node[] => {
   if (nodes.length === 0) {
     throw new Error("You must have at least one node in your workflow");
   }
 
-  if (connections.length === 0) {
-    throw new Error(
-      "You must have at least one connection between reachable nodes"
-    );
-  }
-
   const triggerTypes = new Set(
     triggerNodes.map((n: NodeTypeOption): NodeType => n.type)
   );
-  const triggerNode: Node | undefined = nodes.find((node: Node): boolean =>
-    triggerTypes.has(node.type as NodeType)
-  );
-
-  if (!triggerNode) {
-    throw new Error("No trigger node found in workflow");
+  
+  let triggerNodesList: Node[];
+  
+  if (triggerNodeId) {
+    const specifiedTrigger: Node | undefined = nodes.find(
+      (node: Node): boolean => node.id === triggerNodeId
+    );
+    
+    if (!specifiedTrigger) {
+      throw new Error(`Trigger node with ID ${triggerNodeId} not found`);
+    }
+    
+    if (!triggerTypes.has(specifiedTrigger.type as NodeType)) {
+      throw new Error(`Node with ID ${triggerNodeId} is not a trigger node`);
+    }
+    
+    triggerNodesList = [specifiedTrigger];
+  } else {
+    triggerNodesList = nodes.filter((node: Node): boolean =>
+      triggerTypes.has(node.type as NodeType)
+    );
+    
+    if (triggerNodesList.length === 0) {
+      throw new Error("No trigger node found in workflow");
+    }
   }
 
-  const reachableNodeIds: Set<string> = findReachableNodes(
-    triggerNode,
-    connections
-  );
+  const allReachableNodeIds: Set<string> = new Set();
+  for (const triggerNode of triggerNodesList) {
+    const reachableIds: Set<string> = findReachableNodes(
+      triggerNode,
+      connections
+    );
+    for (const nodeId of reachableIds) {
+      allReachableNodeIds.add(nodeId);
+    }
+  }
 
   const reachableNodes: Node[] = nodes.filter((node: Node): boolean =>
-    reachableNodeIds.has(node.id)
+    allReachableNodeIds.has(node.id)
   );
 
   const reachableConnections: Connection[] = connections.filter(
     (conn: Connection): boolean =>
-      reachableNodeIds.has(conn.fromNodeId) &&
-      reachableNodeIds.has(conn.toNodeId)
+      allReachableNodeIds.has(conn.fromNodeId) &&
+      allReachableNodeIds.has(conn.toNodeId)
   );
 
-  if (reachableConnections.length === 0) {
+  if (reachableConnections.length === 0 && reachableNodes.length > triggerNodesList.length) {
     throw new Error(
       "You must have at least one connection between reachable nodes"
     );
+  }
+
+  if (reachableConnections.length === 0) {
+    return reachableNodes;
   }
 
   const edges: [string, string][] = reachableConnections.map(
@@ -133,6 +157,7 @@ export const hasFailedPredecessor = (
 
 export const sendWorkflowExecution = async (data: {
   workflowId: string;
+  triggerNodeId?: string;
   [key: string]: unknown;
 }) => {
   return inngest.send({
