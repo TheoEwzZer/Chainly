@@ -8,6 +8,7 @@ import { ScheduleTriggerDialog, ScheduleTriggerFormValues } from "./dialog";
 import { useNodeStatus } from "@/features/executions/hooks/use-node-status";
 import { scheduleTriggerChannel } from "@/inngest/channels/schedule-trigger";
 import { fetchScheduleTriggerRealtimeToken } from "./actions";
+import { cronToHumanReadable } from "./utils";
 
 export const ScheduleTriggerNode = memo((props: NodeProps): ReactElement => {
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
@@ -46,7 +47,7 @@ export const ScheduleTriggerNode = memo((props: NodeProps): ReactElement => {
   let description: string = "Not configured";
   if (nodeData?.scheduleMode) {
     if (nodeData.scheduleMode === "cron" && nodeData.cronExpression) {
-      description = `Cron: ${nodeData.cronExpression}`;
+      description = cronToHumanReadable(nodeData.cronExpression);
     } else if (nodeData.scheduleMode === "datetime" && nodeData.datetime) {
       description = `At: ${new Date(nodeData.datetime).toLocaleString()}`;
     } else if (
@@ -80,4 +81,3 @@ export const ScheduleTriggerNode = memo((props: NodeProps): ReactElement => {
 });
 
 ScheduleTriggerNode.displayName = "ScheduleTriggerNode";
-
