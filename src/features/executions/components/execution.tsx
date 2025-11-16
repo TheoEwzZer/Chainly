@@ -168,7 +168,7 @@ export const ExecutionView = ({
             <div className="mt-6 rounded-md bg-muted p-4">
               <div>
                 <p className="text-sm font-medium mb-2">Output</p>
-                <pre className="text-xs font-mono overflow-auto">
+                <pre className="mt-1 max-h-96 overflow-auto rounded-md bg-muted/70 p-3 text-xs font-mono leading-relaxed">
                   {JSON.stringify(execution.output, null, 2)}
                 </pre>
               </div>
