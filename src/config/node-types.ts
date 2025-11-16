@@ -1,5 +1,5 @@
 import { NodeType } from "@/generated/prisma/enums";
-import { GlobeIcon, MousePointerIcon, WebhookIcon } from "lucide-react";
+import { ClockIcon, GlobeIcon, MousePointerIcon, WebhookIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
 export type NodeTypeOption = {
@@ -37,6 +37,13 @@ export const triggerNodes: NodeTypeOption[] = [
     description:
       "Runs the flow when GitHub events occur (push, pull request, issues, etc.).",
     icon: "/logos/github.svg",
+  },
+  {
+    type: NodeType.SCHEDULE_TRIGGER,
+    label: "Schedule",
+    description:
+      "Runs the flow on a schedule (cron, specific date/time, or recurring interval).",
+    icon: ClockIcon,
   },
 ];
 

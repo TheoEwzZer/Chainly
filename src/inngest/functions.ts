@@ -27,6 +27,7 @@ import { anthropicChannel } from "./channels/anthropic";
 import { openaiChannel } from "./channels/openai";
 import { discordChannel } from "./channels/discord";
 import { googleCalendarChannel } from "./channels/google-calendar";
+import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 
 export const executeWorkflow = inngest.createFunction(
   {
@@ -52,6 +53,7 @@ export const executeWorkflow = inngest.createFunction(
       googleFormTriggerChannel(),
       webhookTriggerChannel(),
       githubTriggerChannel(),
+      scheduleTriggerChannel(),
       geminiChannel(),
       anthropicChannel(),
       openaiChannel(),
