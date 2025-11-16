@@ -124,7 +124,9 @@ const ExecutionTimelineItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div>
-              <p className="text-sm font-semibold">{formatNodeType(step.nodeType)}</p>
+              <p className="text-sm font-semibold">
+                {formatNodeType(step.nodeType)}
+              </p>
             </div>
             <span
               className={cn(
@@ -202,7 +204,7 @@ const ExecutionTimelineDetails = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-auto px-0 text-xs font-medium text-primary"
+          className="h-auto text-xs font-medium text-primary"
         >
           {open ? "Hide details" : "View details"}
         </Button>
