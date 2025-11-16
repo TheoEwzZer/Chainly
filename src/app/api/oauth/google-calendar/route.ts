@@ -10,22 +10,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const credentialId = searchParams.get("credentialId");
-    
-    // Generate state with user ID and optional credential ID
-    const state = JSON.stringify({
+    const { searchParams } = request.nextUrl;
+    const credentialId: string | null = searchParams.get("credentialId");
+
+    const state: string = JSON.stringify({
       userId: session.user.id,
       credentialId: credentialId || null,
     });
 
-    const authUrl = getGoogleOAuth2AuthUrl(state);
+    const authUrl: string = getGoogleOAuth2AuthUrl(state);
 
     return NextResponse.json({ authUrl });
   } catch (error) {
@@ -36,4 +32,3 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 }
-

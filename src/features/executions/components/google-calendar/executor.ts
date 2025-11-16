@@ -71,12 +71,10 @@ export const googleCalendarExecutor: NodeExecutor<
 
   let accessToken: string;
   try {
-    // Get a valid access token (will refresh if needed)
     accessToken = await step.run(`get-valid-token-${nodeId}`, async () => {
       return await getValidAccessToken(data.credentialId, userId);
     });
 
-    // Process templates for calendarId and date
     const calendarIdTemplate: string = transformBracketNotation(
       data.calendarId || "primary"
     );
@@ -90,7 +88,6 @@ export const googleCalendarExecutor: NodeExecutor<
       ? Handlebars.compile(dateTemplate)(context)
       : undefined;
 
-    // Determine the date to use (default to today)
     let targetDate: Date;
     if (renderedDate) {
       targetDate = new Date(renderedDate);
@@ -111,17 +108,14 @@ export const googleCalendarExecutor: NodeExecutor<
       targetDate = new Date();
     }
 
-    // Set time to start of day (00:00:00)
     const timeMin = new Date(targetDate);
     timeMin.setHours(0, 0, 0, 0);
 
-    // Set time to end of day (23:59:59)
     const timeMax = new Date(targetDate);
     timeMax.setHours(23, 59, 59, 999);
 
-    // Format dates in RFC3339 format for Google Calendar API
-    const timeMinStr = timeMin.toISOString();
-    const timeMaxStr = timeMax.toISOString();
+    const timeMinStr: string = timeMin.toISOString();
+    const timeMaxStr: string = timeMax.toISOString();
 
     const result: WorkflowContext = await step.run(
       `google-calendar-fetch-${nodeId}`,
@@ -142,7 +136,7 @@ export const googleCalendarExecutor: NodeExecutor<
                   singleEvents: "true",
                   orderBy: "startTime",
                 },
-                timeout: 30000, // 30 seconds timeout
+                timeout: 30000,
                 retry: {
                   limit: 2,
                   methods: ["get"],

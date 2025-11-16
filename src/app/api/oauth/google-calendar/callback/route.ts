@@ -3,18 +3,21 @@ import { getTokensFromCode } from "@/lib/google-oauth";
 import prisma from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
 import { CredentialType } from "@/generated/prisma/enums";
+import { Credential } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
+    const { searchParams } = request.nextUrl;
+    const code: string | null = searchParams.get("code");
+    const state: string | null = searchParams.get("state");
+    const error: string | null = searchParams.get("error");
 
     if (error) {
       return NextResponse.redirect(
         new URL(
-          `/credentials?error=${encodeURIComponent("OAuth authorization was denied")}`,
+          `/credentials?error=${encodeURIComponent(
+            "OAuth authorization was denied"
+          )}`,
           request.url
         )
       );
@@ -23,13 +26,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!code) {
       return NextResponse.redirect(
         new URL(
-          `/credentials?error=${encodeURIComponent("No authorization code received")}`,
+          `/credentials?error=${encodeURIComponent(
+            "No authorization code received"
+          )}`,
           request.url
         )
       );
     }
 
-    let parsedState: { userId: string; credentialId: string | null } | null = null;
+    let parsedState: { userId: string; credentialId: string | null } | null =
+      null;
     if (state) {
       try {
         parsedState = JSON.parse(state);
@@ -47,16 +53,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get tokens from Google
-    const tokens = await getTokensFromCode(code);
+    const tokens: {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+  } = await getTokensFromCode(code);
 
-    // Calculate expiration date
-    const expiresAt = tokens.expires_in
+    const expiresAt: Date | null = tokens.expires_in
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null;
 
     if (parsedState.credentialId) {
-      // Update existing credential
       await prisma.credential.update({
         where: {
           id: parsedState.credentialId,
@@ -73,13 +80,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       return NextResponse.redirect(
         new URL(
-          `/credentials/${parsedState.credentialId}?success=${encodeURIComponent("Google Calendar connection updated successfully")}`,
+          `/credentials/${
+            parsedState.credentialId
+          }?success=${encodeURIComponent(
+            "Google Calendar connection updated successfully"
+          )}`,
           request.url
         )
       );
     } else {
-      // Create new credential
-      const credential = await prisma.credential.create({
+      const credential: Credential = await prisma.credential.create({
         data: {
           name: "Google Calendar",
           value: encrypt(tokens.access_token),
@@ -94,7 +104,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       return NextResponse.redirect(
         new URL(
-          `/credentials/${credential.id}?success=${encodeURIComponent("Google Calendar connected successfully")}`,
+          `/credentials/${credential.id}?success=${encodeURIComponent(
+            "Google Calendar connected successfully"
+          )}`,
           request.url
         )
       );
@@ -103,10 +115,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     console.error("Error in OAuth callback:", error);
     return NextResponse.redirect(
       new URL(
-        `/credentials?error=${encodeURIComponent("Failed to complete OAuth flow")}`,
+        `/credentials?error=${encodeURIComponent(
+          "Failed to complete OAuth flow"
+        )}`,
         request.url
       )
     );
   }
 }
-

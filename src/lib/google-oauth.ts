@@ -1,16 +1,17 @@
 import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
-const BASE_URL =
+const BASE_URL: string =
   process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
   "http://localhost:3000";
 
-export const GOOGLE_CALENDAR_SCOPES = [
+export const GOOGLE_CALENDAR_SCOPES: string[] = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
-export function getGoogleOAuth2Client() {
+export function getGoogleOAuth2Client(): OAuth2Client {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error("Google OAuth credentials are not configured");
   }

@@ -2,14 +2,15 @@ import prisma from "@/lib/db";
 import { decrypt, encrypt } from "@/lib/encryption";
 import { refreshAccessToken } from "@/lib/google-oauth";
 
-/**
- * Gets a valid access token for Google Calendar, refreshing if necessary
- */
 export async function getValidAccessToken(
   credentialId: string,
   userId: string
 ): Promise<string> {
-  const credential = await prisma.credential.findUnique({
+  const credential: {
+    value: string;
+    refreshToken: string | null;
+    expiresAt: Date | null;
+  } | null = await prisma.credential.findUnique({
     where: {
       id: credentialId,
       userId,
@@ -25,20 +26,17 @@ export async function getValidAccessToken(
     throw new Error("Credential not found");
   }
 
-  const accessToken = decrypt(credential.value);
+  const accessToken: string = decrypt(credential.value);
   const now = new Date();
 
-  // Check if token is expired or will expire in the next 5 minutes
-  const isExpired =
+  const isExpired: boolean | null =
     credential.expiresAt &&
     new Date(credential.expiresAt.getTime() - 5 * 60 * 1000) <= now;
 
-  // If token is still valid, return it
   if (!isExpired) {
     return accessToken;
   }
 
-  // Token is expired, try to refresh
   if (!credential.refreshToken) {
     throw new Error(
       "Access token expired and no refresh token available. Please reconnect your Google Calendar account."
@@ -46,11 +44,13 @@ export async function getValidAccessToken(
   }
 
   try {
-    const refreshTokenValue = decrypt(credential.refreshToken);
-    const newTokens = await refreshAccessToken(refreshTokenValue);
+    const refreshTokenValue: string = decrypt(credential.refreshToken);
+    const newTokens: {
+      access_token: string;
+      expires_in?: number;
+    } = await refreshAccessToken(refreshTokenValue);
 
-    // Update credential with new token
-    const expiresAt = newTokens.expires_in
+    const expiresAt: Date | null = newTokens.expires_in
       ? new Date(Date.now() + newTokens.expires_in * 1000)
       : null;
 
@@ -73,4 +73,3 @@ export async function getValidAccessToken(
     );
   }
 }
-
