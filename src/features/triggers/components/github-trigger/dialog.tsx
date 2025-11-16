@@ -160,7 +160,7 @@ export const GitHubTriggerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>GitHub Trigger Configuration</DialogTitle>
           <DialogDescription>

@@ -97,7 +97,7 @@ export const WebhookTriggerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Webhook Trigger</DialogTitle>
           <DialogDescription>
