@@ -188,13 +188,13 @@ export const GoogleCalendarDialog = ({
                 ) : (
                   <>
                     <Image
-                      src="/logos/google.svg"
-                      alt="Google"
+                      src="/logos/google-calendar.svg"
+                      alt="Google Calendar"
                       width={16}
                       height={16}
                       className="mr-2"
                     />
-                    Connect with Google
+                    Connect with Google Calendar
                   </>
                 )}
               </Button>
