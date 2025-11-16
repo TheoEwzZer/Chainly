@@ -337,7 +337,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       const newId: string = generateEditorId();
       idMapping.set(node.id, newId);
 
-      const nodeData: Record<string, unknown> = node.data ? structuredClone(node.data) : node.data;
+      const nodeData: Record<string, unknown> = node.data
+        ? structuredClone(node.data)
+        : node.data;
       const nodePosition: XYPosition = node.position;
 
       return {
@@ -362,7 +364,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
           return null;
         }
 
-        const edgeData: Record<string, unknown> | undefined = edge.data ? structuredClone(edge.data) : edge.data;
+        const edgeData: Record<string, unknown> | undefined = edge.data
+          ? structuredClone(edge.data)
+          : edge.data;
 
         return {
           ...edge,
@@ -442,6 +446,10 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
 
+      const selection: Selection | null = globalThis.getSelection();
+      const hasTextSelection: boolean =
+        selection !== null && selection.toString().trim().length > 0;
+
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === "z" &&
@@ -471,7 +479,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === "c") {
-        if (isInputField) {
+        if (isInputField || hasTextSelection) {
           return;
         }
 
@@ -481,7 +489,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === "v") {
-        if (isInputField) {
+        if (isInputField || hasTextSelection) {
           return;
         }
 
