@@ -1,5 +1,5 @@
 import { NodeType } from "@/generated/prisma/enums";
-import { GlobeIcon, MousePointerIcon } from "lucide-react";
+import { GlobeIcon, MousePointerIcon, WebhookIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
 export type NodeTypeOption = {
@@ -23,6 +23,13 @@ export const triggerNodes: NodeTypeOption[] = [
     description:
       "Runs the flow when a Google Form is submitted. Good for collecting data from a form.",
     icon: "/logos/google-form.svg",
+  },
+  {
+    type: NodeType.WEBHOOK_TRIGGER,
+    label: "Incoming Webhook",
+    description:
+      "Runs the flow when an authenticated HTTP request hits your webhook URL.",
+    icon: WebhookIcon,
   },
 ];
 
