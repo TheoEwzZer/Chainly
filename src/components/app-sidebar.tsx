@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  CreditCardIcon,
-  FolderOpenIcon,
-  HistoryIcon,
-  KeyIcon,
-  LogOutIcon,
-  StarIcon,
-} from "lucide-react";
+import { FolderOpenIcon, HistoryIcon, KeyIcon, LogOutIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
