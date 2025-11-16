@@ -38,55 +38,65 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   publish,
   userId,
 }) => {
-  await publish(
-    openaiChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
-
-  if (!data.variableName) {
+  await step.run(`publish-loading-${nodeId}`, async () => {
     await publish(
       openaiChannel().status({
         nodeId,
-        status: "error",
+        status: "loading",
       })
     );
+  });
+
+  if (!data.variableName) {
+    await step.run(`publish-error-variable-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("OpenAI Node: Variable name is required");
   }
 
   if (!data.model) {
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-model-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("OpenAI Node: Model is required");
   }
 
   if (!data.userPrompt) {
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-prompt-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("OpenAI Node: User prompt is required");
   }
 
   if (!data.credentialId) {
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-credential-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("OpenAI Node: Credential is required");
   }
 
   const credential: { value: string } | null = await step.run(
-    "get-credential",
+    `get-credential-${nodeId}`,
     async () => {
       return await prisma.credential.findUnique({
         where: { id: data.credentialId, userId },
@@ -98,12 +108,14 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   );
 
   if (!credential) {
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-credential-not-found-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("OpenAI Node: Credential not found");
   }
 
@@ -141,12 +153,14 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
 
     const text: string = textContent ? textContent.text : "";
 
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "success",
-      })
-    );
+    await step.run(`publish-success-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "success",
+        })
+      );
+    });
 
     return {
       ...context,
@@ -155,12 +169,14 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
       },
     };
   } catch (error) {
-    await publish(
-      openaiChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-final-${nodeId}`, async () => {
+      await publish(
+        openaiChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw error;
   }
 };

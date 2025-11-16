@@ -394,37 +394,44 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
   userId,
 }) => {
   // 1. Publish "loading" status
-  await publish(
-    yourNodeChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
-
-  // 2. Validate required fields
-  if (!data.variableName) {
+  // IMPORTANT: Wrap publish() in step.run() with unique ID to avoid conflicts in parallel execution
+  await step.run(`publish-loading-${nodeId}`, async () => {
     await publish(
       yourNodeChannel().status({
         nodeId,
-        status: "error",
+        status: "loading",
       })
     );
+  });
+
+  // 2. Validate required fields
+  if (!data.variableName) {
+    await step.run(`publish-error-variable-${nodeId}`, async () => {
+      await publish(
+        yourNodeChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Your Node: Variable name is required");
   }
 
   if (!data.yourField) {
-    await publish(
-      yourNodeChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-field-${nodeId}`, async () => {
+      await publish(
+        yourNodeChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Your Node: Your field is required");
   }
 
   // 3. Retrieve credentials if necessary
   if (data.credentialId) {
-    const credential = await step.run("get-credential", async () => {
+    const credential = await step.run(`get-credential-${nodeId}`, async () => {
       return await prisma.credential.findUnique({
         where: { id: data.credentialId, userId },
         select: { value: true },
@@ -432,11 +439,16 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
     });
 
     if (!credential) {
-      await publish(
-        yourNodeChannel().status({
-          nodeId,
-          status: "error",
-        })
+      await step.run(
+        `publish-error-credential-not-found-${nodeId}`,
+        async () => {
+          await publish(
+            yourNodeChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
       );
       throw new NonRetriableError("Your Node: Credential not found");
     }
@@ -452,7 +464,7 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
 
     // 5. Execute business logic in an Inngest step
     const result: WorkflowContext = await step.run(
-      "your-node-logic",
+      `your-node-logic-${nodeId}`,
       async () => {
         // *** YOUR BUSINESS LOGIC HERE ***
         // Example: API call, data processing, etc.
@@ -472,22 +484,26 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
     );
 
     // 6. Publish "success" status
-    await publish(
-      yourNodeChannel().status({
-        nodeId,
-        status: "success",
-      })
-    );
+    await step.run(`publish-success-${nodeId}`, async () => {
+      await publish(
+        yourNodeChannel().status({
+          nodeId,
+          status: "success",
+        })
+      );
+    });
 
     return result;
   } catch (error) {
     // 7. Handle errors
-    await publish(
-      yourNodeChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-final-${nodeId}`, async () => {
+      await publish(
+        yourNodeChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw error;
   }
 };
@@ -495,6 +511,9 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
 
 **Key Points:**
 
+- **CRITICAL**: Always wrap `publish()` calls in `step.run()` with unique IDs (e.g., `publish-loading-${nodeId}`)
+  - This prevents Inngest from creating duplicate step IDs when nodes execute in parallel
+  - Without this, you'll get `AUTOMATIC_PARALLEL_INDEXING` warnings
 - Always publish status via the channel (`loading`, `success`, `error`)
 - Use `step.run()` for all important operations (enables retry and monitoring)
 - Validate all required fields at the beginning
@@ -809,12 +828,15 @@ The HTTP Request node shows how to make external API calls:
 try {
   // Your logic
 } catch (error) {
-  await publish(
-    yourNodeChannel().status({
-      nodeId,
-      status: "error",
-    })
-  );
+  // IMPORTANT: Wrap publish in step.run with unique ID
+  await step.run(`publish-error-final-${nodeId}`, async () => {
+    await publish(
+      yourNodeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+  });
 
   // Use NonRetriableError for business errors
   if (error instanceof YourBusinessError) {
@@ -856,18 +878,32 @@ const rendered = Handlebars.compile(template)(context);
 
 ### 5. Realtime Status
 
+**IMPORTANT**: Always wrap `publish()` in `step.run()` with unique IDs to avoid conflicts in parallel execution.
+
 Always publish status in this order:
 
 ```typescript
 // 1. At the beginning
-await publish(channel().status({ nodeId, status: "loading" }));
+await step.run(`publish-loading-${nodeId}`, async () => {
+  await publish(channel().status({ nodeId, status: "loading" }));
+});
 
 // 2. On success
-await publish(channel().status({ nodeId, status: "success" }));
+await step.run(`publish-success-${nodeId}`, async () => {
+  await publish(channel().status({ nodeId, status: "success" }));
+});
 
-// 3. On error
-await publish(channel().status({ nodeId, status: "error" }));
+// 3. On error (in catch block)
+await step.run(`publish-error-final-${nodeId}`, async () => {
+  await publish(channel().status({ nodeId, status: "error" }));
+});
 ```
+
+**Why wrap publish() in step.run()?**
+
+- When multiple nodes of the same type execute in parallel, Inngest internally creates steps for each `publish()` call
+- Without unique IDs, these internal steps would have the same ID, causing `AUTOMATIC_PARALLEL_INDEXING` warnings
+- By wrapping in `step.run()` with `${nodeId}`, each node gets unique step IDs
 
 ### 6. Workflow Context
 
@@ -889,9 +925,11 @@ return {
 
 ### 7. Performance
 
-- Use `step.run()` for all I/O operations
+- Use `step.run()` for all I/O operations (including `publish()` calls)
 - Avoid blocking synchronous operations
 - Limit the size of data stored in context
+- Each `step.run()` creates a checkpoint in Inngest for retry/debugging
+- Use unique step IDs (with `${nodeId}`) to prevent conflicts in parallel execution
 
 ### 8. Security
 
@@ -943,6 +981,22 @@ return {
 - ✅ Run `npx prisma generate` to regenerate types
 - ✅ Check imports from `@/generated/prisma/`
 - ✅ Restart TypeScript server in your IDE
+
+### Inngest warning: AUTOMATIC_PARALLEL_INDEXING
+
+If you see this warning in the console:
+
+```
+We detected that you have multiple steps with the same ID.
+Code: AUTOMATIC_PARALLEL_INDEXING
+```
+
+**Solution:**
+
+- ✅ Wrap ALL `publish()` calls in `step.run()` with unique IDs
+- ✅ Use `${nodeId}` in step IDs to make them unique per node
+- ✅ Example: `await step.run(\`publish-loading-\${nodeId}\`, async () => { await publish(...); })`
+- ✅ Check that you didn't forget any `publish()` calls (loading, success, error, validation errors)
 
 ---
 

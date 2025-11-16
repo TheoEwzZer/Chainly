@@ -12,24 +12,28 @@ export const manualTriggerExecutor: NodeExecutor<ManualTriggerData> = async ({
   step,
   publish,
 }) => {
-  await publish(
-    manualTriggerChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
+  await step.run(`publish-loading-${nodeId}`, async () => {
+    await publish(
+      manualTriggerChannel().status({
+        nodeId,
+        status: "loading",
+      })
+    );
+  });
 
   const result: WorkflowContext = await step.run(
-    "manual-trigger",
+    `manual-trigger-${nodeId}`,
     async (): Promise<WorkflowContext> => context
   );
 
-  await publish(
-    manualTriggerChannel().status({
-      nodeId,
-      status: "success",
-    })
-  );
+  await step.run(`publish-success-${nodeId}`, async () => {
+    await publish(
+      manualTriggerChannel().status({
+        nodeId,
+        status: "success",
+      })
+    );
+  });
 
   return result;
 };

@@ -102,119 +102,136 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
   step,
   publish,
 }) => {
-  await publish(
-    httpRequestChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
-
-  if (!data.endpoint) {
+  await step.run(`publish-loading-${nodeId}`, async () => {
     await publish(
       httpRequestChannel().status({
         nodeId,
-        status: "error",
+        status: "loading",
       })
     );
+  });
+
+  if (!data.endpoint) {
+    await step.run(`publish-error-endpoint-${nodeId}`, async () => {
+      await publish(
+        httpRequestChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("HTTP Request Node: Endpoint is required");
   }
 
   if (!data.variableName) {
-    await publish(
-      httpRequestChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-variable-${nodeId}`, async () => {
+      await publish(
+        httpRequestChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("HTTP Request Node: Variable name is required");
   }
 
   if (!data.method) {
-    await publish(
-      httpRequestChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-method-${nodeId}`, async () => {
+      await publish(
+        httpRequestChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("HTTP Request Node: Method is required");
   }
 
   try {
-    const result: WorkflowContext = await step.run("http-request", async () => {
-      const transformedEndpoint: string = transformBracketNotation(
-        data.endpoint
-      );
-      const endpoint: string = Handlebars.compile(transformedEndpoint)(context);
-      const method: HTTPRequestMethodEnum = data.method;
+    const result: WorkflowContext = await step.run(
+      `http-request-${nodeId}`,
+      async () => {
+        const transformedEndpoint: string = transformBracketNotation(
+          data.endpoint
+        );
+        const endpoint: string =
+          Handlebars.compile(transformedEndpoint)(context);
+        const method: HTTPRequestMethodEnum = data.method;
 
-      const options: KyOptions = { method };
+        const options: KyOptions = { method };
 
-      if (
-        [
-          HTTPRequestMethodEnum.POST,
-          HTTPRequestMethodEnum.PUT,
-          HTTPRequestMethodEnum.PATCH,
-        ].includes(method)
-      ) {
-        try {
-          const transformedBody: string = transformBracketNotation(
-            data.body || ""
-          );
-          const resolved: string = Handlebars.compile(transformedBody)(context);
-          const sanitized: string =
-            escapeControlCharsInJsonStringLiterals(resolved);
-          const parsedBody: unknown = JSON.parse(sanitized);
+        if (
+          [
+            HTTPRequestMethodEnum.POST,
+            HTTPRequestMethodEnum.PUT,
+            HTTPRequestMethodEnum.PATCH,
+          ].includes(method)
+        ) {
+          try {
+            const transformedBody: string = transformBracketNotation(
+              data.body || ""
+            );
+            const resolved: string =
+              Handlebars.compile(transformedBody)(context);
+            const sanitized: string =
+              escapeControlCharsInJsonStringLiterals(resolved);
+            const parsedBody: unknown = JSON.parse(sanitized);
 
-          (options as KyOptions & { json?: unknown }).json = parsedBody;
-        } catch (error) {
-          await publish(
-            httpRequestChannel().status({
-              nodeId,
-              status: "error",
-            })
-          );
-          throw new NonRetriableError(
-            `HTTP Request Node: Invalid JSON body template - ${
-              error instanceof Error ? error.message : "Unknown error"
-            }. Tip: when inserting variables inside JSON, use the helper {{json yourVariable}} without quotes (e.g. "message": {{json previous.data}}) to ensure proper escaping.`
-          );
+            (options as KyOptions & { json?: unknown }).json = parsedBody;
+          } catch (error) {
+            await publish(
+              httpRequestChannel().status({
+                nodeId,
+                status: "error",
+              })
+            );
+            throw new NonRetriableError(
+              `HTTP Request Node: Invalid JSON body template - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }. Tip: when inserting variables inside JSON, use the helper {{json yourVariable}} without quotes (e.g. "message": {{json previous.data}}) to ensure proper escaping.`
+            );
+          }
         }
+
+        const response: KyResponse<unknown> = await ky(endpoint, options);
+        const contentType: string | null = response.headers.get("content-type");
+        const responseData: unknown = contentType?.includes("application/json")
+          ? await response.json()
+          : await response.text();
+        const responsePayload = {
+          httpResponse: {
+            status: response.status,
+            statusText: response.statusText,
+            data: responseData,
+          },
+        };
+
+        return {
+          ...context,
+          [data.variableName]: responsePayload,
+        };
       }
-
-      const response: KyResponse<unknown> = await ky(endpoint, options);
-      const contentType: string | null = response.headers.get("content-type");
-      const responseData: unknown = contentType?.includes("application/json")
-        ? await response.json()
-        : await response.text();
-      const responsePayload = {
-        httpResponse: {
-          status: response.status,
-          statusText: response.statusText,
-          data: responseData,
-        },
-      };
-
-      return {
-        ...context,
-        [data.variableName]: responsePayload,
-      };
-    });
-
-    await publish(
-      httpRequestChannel().status({
-        nodeId,
-        status: "success",
-      })
     );
+
+    await step.run(`publish-success-${nodeId}`, async () => {
+      await publish(
+        httpRequestChannel().status({
+          nodeId,
+          status: "success",
+        })
+      );
+    });
 
     return result;
   } catch (error) {
-    await publish(
-      httpRequestChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-final-${nodeId}`, async () => {
+      await publish(
+        httpRequestChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw error;
   }
 };

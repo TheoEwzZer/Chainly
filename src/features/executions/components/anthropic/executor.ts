@@ -38,55 +38,65 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
   publish,
   userId,
 }) => {
-  await publish(
-    anthropicChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
-
-  if (!data.variableName) {
+  await step.run(`publish-loading-${nodeId}`, async () => {
     await publish(
       anthropicChannel().status({
         nodeId,
-        status: "error",
+        status: "loading",
       })
     );
+  });
+
+  if (!data.variableName) {
+    await step.run(`publish-error-variable-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Anthropic Node: Variable name is required");
   }
 
   if (!data.model) {
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-model-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Anthropic Node: Model is required");
   }
 
   if (!data.userPrompt) {
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-prompt-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Anthropic Node: User prompt is required");
   }
 
   if (!data.credentialId) {
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-credential-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Anthropic Node: Credential is required");
   }
 
   const credential: { value: string } | null = await step.run(
-    "get-credential",
+    `get-credential-${nodeId}`,
     async () => {
       return await prisma.credential.findUnique({
         where: { id: data.credentialId, userId },
@@ -98,12 +108,14 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
   );
 
   if (!credential) {
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-credential-not-found-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Anthropic Node: Credential not found");
   }
 
@@ -145,12 +157,14 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
 
     const text: string = textContent ? textContent.text : "";
 
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "success",
-      })
-    );
+    await step.run(`publish-success-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "success",
+        })
+      );
+    });
 
     return {
       ...context,
@@ -159,12 +173,14 @@ export const anthropicExecutor: NodeExecutor<AnthropicFormValues> = async ({
       },
     };
   } catch (error) {
-    await publish(
-      anthropicChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-final-${nodeId}`, async () => {
+      await publish(
+        anthropicChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw error;
   }
 };

@@ -38,40 +38,48 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
   step,
   publish,
 }) => {
-  await publish(
-    discordChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
-
-  if (!data.variableName) {
+  await step.run(`publish-loading-${nodeId}`, async () => {
     await publish(
       discordChannel().status({
         nodeId,
-        status: "error",
+        status: "loading",
       })
     );
+  });
+
+  if (!data.variableName) {
+    await step.run(`publish-error-variable-${nodeId}`, async () => {
+      await publish(
+        discordChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Discord Node: Variable name is required");
   }
 
   if (!data.webhookUrl) {
-    await publish(
-      discordChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-webhook-${nodeId}`, async () => {
+      await publish(
+        discordChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Discord Node: Webhook URL is required");
   }
 
   if (!data.content) {
-    await publish(
-      discordChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-content-${nodeId}`, async () => {
+      await publish(
+        discordChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw new NonRetriableError("Discord Node: Message content is required");
   }
 
@@ -94,7 +102,7 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
       : undefined;
 
     const result: WorkflowContext = await step.run(
-      "discord-webhook",
+      `discord-webhook-${nodeId}`,
       async () => {
         const payload: { content: string; username?: string } = {
           content: content.slice(0, 2000),
@@ -120,21 +128,25 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
       }
     );
 
-    await publish(
-      discordChannel().status({
-        nodeId,
-        status: "success",
-      })
-    );
+    await step.run(`publish-success-${nodeId}`, async () => {
+      await publish(
+        discordChannel().status({
+          nodeId,
+          status: "success",
+        })
+      );
+    });
 
     return result;
   } catch (error) {
-    await publish(
-      discordChannel().status({
-        nodeId,
-        status: "error",
-      })
-    );
+    await step.run(`publish-error-final-${nodeId}`, async () => {
+      await publish(
+        discordChannel().status({
+          nodeId,
+          status: "error",
+        })
+      );
+    });
     throw error;
   }
 };

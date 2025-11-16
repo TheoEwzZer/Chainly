@@ -9,24 +9,28 @@ type GoogleFormTriggerData = Record<string, unknown>;
 export const googleFormTriggerExecutor: NodeExecutor<
   GoogleFormTriggerData
 > = async ({ nodeId, context, step, publish }) => {
-  await publish(
-    googleFormTriggerChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  );
+  await step.run(`publish-loading-${nodeId}`, async () => {
+    await publish(
+      googleFormTriggerChannel().status({
+        nodeId,
+        status: "loading",
+      })
+    );
+  });
 
   const result: WorkflowContext = await step.run(
-    "google-form-trigger",
+    `google-form-trigger-${nodeId}`,
     async (): Promise<WorkflowContext> => context
   );
 
-  await publish(
-    googleFormTriggerChannel().status({
-      nodeId,
-      status: "success",
-    })
-  );
+  await step.run(`publish-success-${nodeId}`, async () => {
+    await publish(
+      googleFormTriggerChannel().status({
+        nodeId,
+        status: "success",
+      })
+    );
+  });
 
   return result;
 };
