@@ -106,6 +106,31 @@ export const topologicalSort = (
     .filter(Boolean);
 };
 
+export const getNodePredecessors = (
+  nodeId: string,
+  connections: Connection[]
+): string[] => {
+  return connections
+    .filter((conn: Connection): boolean => conn.toNodeId === nodeId)
+    .map((conn: Connection): string => conn.fromNodeId);
+};
+
+export const hasFailedPredecessor = (
+  nodeId: string,
+  connections: Connection[],
+  failedNodeIds: Set<string>
+): boolean => {
+  const predecessors: string[] = getNodePredecessors(nodeId, connections);
+
+  for (const predecessorId of predecessors) {
+    if (failedNodeIds.has(predecessorId)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 export const sendWorkflowExecution = async (data: {
   workflowId: string;
   [key: string]: unknown;

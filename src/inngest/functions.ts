@@ -11,7 +11,7 @@ import {
   type ExecutionStep,
 } from "@/generated/prisma/client";
 import type { Jsonify } from "inngest/types";
-import { topologicalSort } from "./utils";
+import { topologicalSort, hasFailedPredecessor } from "./utils";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
 import {
   NodeExecutor,
@@ -76,32 +76,45 @@ export const executeWorkflow = inngest.createFunction(
       }
     );
 
-    const sortedNodes: Jsonify<Node>[] = await step.run(
-      "prepare-workflow",
-      async (): Promise<Node[]> => {
-        const workflow: {
-          nodes: Node[];
+    const {
+      sortedNodes,
+      connections,
+    }: { sortedNodes: Jsonify<Node>[]; connections: Jsonify<Connection>[] } =
+      await step.run(
+        "prepare-workflow",
+        async (): Promise<{
+          sortedNodes: Node[];
           connections: Connection[];
-        } & Workflow = await prisma.workflow.findUniqueOrThrow({
-          where: { id: workflowId },
-          include: {
-            nodes: true,
-            connections: true,
-          },
-        });
+        }> => {
+          const workflow: {
+            nodes: Node[];
+            connections: Connection[];
+          } & Workflow = await prisma.workflow.findUniqueOrThrow({
+            where: { id: workflowId },
+            include: {
+              nodes: true,
+              connections: true,
+            },
+          });
 
-        try {
-          return topologicalSort(workflow.nodes, workflow.connections);
-        } catch (error) {
-          if (error instanceof Error && error.message.includes("Cyclic")) {
-            throw new NonRetriableError(
-              "Cyclic dependency detected in workflow"
-            );
+          try {
+            return {
+              sortedNodes: topologicalSort(
+                workflow.nodes,
+                workflow.connections
+              ),
+              connections: workflow.connections,
+            };
+          } catch (error) {
+            if (error instanceof Error && error.message.includes("Cyclic")) {
+              throw new NonRetriableError(
+                "Cyclic dependency detected in workflow"
+              );
+            }
+            throw error;
           }
-          throw error;
         }
-      }
-    );
+      );
 
     const userId: string = await step.run(
       "find-user-id",
@@ -122,9 +135,52 @@ export const executeWorkflow = inngest.createFunction(
     }
 
     let context: WorkflowContext = event.data.initialData || {};
+    const failedNodeIds: Set<string> = new Set();
+    let hasAnyNodeFailed: boolean = false;
 
     for (const [order, node] of sortedNodes.entries()) {
       const currentContext: WorkflowContext = context;
+
+      const shouldSkip: boolean = hasFailedPredecessor(
+        node.id,
+        connections as unknown as Connection[],
+        failedNodeIds
+      );
+
+      if (shouldSkip) {
+        await prisma.executionStep.upsert({
+          where: {
+            executionId_order: {
+              executionId: executionRecord.id,
+              order,
+            },
+          },
+          create: {
+            executionId: executionRecord.id,
+            nodeId: node.id,
+            nodeType: node.type,
+            order,
+            status: ExecutionStatus.FAILED,
+            input: currentContext as Prisma.InputJsonValue,
+            error: "Skipped due to failed predecessor",
+            completedAt: new Date(),
+          },
+          update: {
+            nodeId: node.id,
+            nodeType: node.type,
+            status: ExecutionStatus.FAILED,
+            input: currentContext as Prisma.InputJsonValue,
+            output: Prisma.JsonNull,
+            error: "Skipped due to failed predecessor",
+            errorStack: null,
+            completedAt: new Date(),
+            startedAt: new Date(),
+          },
+        });
+        failedNodeIds.add(node.id);
+        continue;
+      }
+
       const stepRecord: ExecutionStep = await prisma.executionStep.upsert({
         where: {
           executionId_order: {
@@ -175,6 +231,9 @@ export const executeWorkflow = inngest.createFunction(
 
         context = result;
       } catch (error) {
+        hasAnyNodeFailed = true;
+        failedNodeIds.add(node.id);
+
         await prisma.executionStep.update({
           where: { id: stepRecord.id },
           data: {
@@ -185,7 +244,6 @@ export const executeWorkflow = inngest.createFunction(
               error instanceof Error ? error.stack : "No stack trace available",
           },
         });
-        throw error;
       }
     }
 
@@ -193,9 +251,14 @@ export const executeWorkflow = inngest.createFunction(
       return await prisma.execution.update({
         where: { inngestEventId, workflowId },
         data: {
-          status: ExecutionStatus.SUCCESS,
+          status: hasAnyNodeFailed
+            ? ExecutionStatus.FAILED
+            : ExecutionStatus.SUCCESS,
           completedAt: new Date(),
           output: context as Prisma.InputJsonValue,
+          error: hasAnyNodeFailed
+            ? "One or more nodes failed during execution"
+            : null,
         },
       });
     });
