@@ -31,6 +31,13 @@ export const triggerNodes: NodeTypeOption[] = [
       "Runs the flow when an authenticated HTTP request hits your webhook URL.",
     icon: WebhookIcon,
   },
+  {
+    type: NodeType.GITHUB_TRIGGER,
+    label: "GitHub",
+    description:
+      "Runs the flow when GitHub events occur (push, pull request, issues, etc.).",
+    icon: "/logos/github.svg",
+  },
 ];
 
 export const executionNodes: NodeTypeOption[] = [

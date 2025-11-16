@@ -6,6 +6,7 @@ import { HttpRequestNode } from "@/features/executions/components/http-request/n
 import { GoogleFormTriggerNode } from "@/features/triggers/components/google-form-trigger/node";
 import { ManualTriggerNode } from "@/features/triggers/components/manual-trigger/node";
 import { WebhookTriggerNode } from "@/features/triggers/components/webhook-trigger/node";
+import { GitHubTriggerNode } from "@/features/triggers/components/github-trigger/node";
 import { NodeType } from "@/generated/prisma/enums";
 import type { NodeTypes } from "@xyflow/react";
 import { DiscordNode } from "@/features/executions/components/discord/node";
@@ -16,6 +17,7 @@ export const nodeComponents = {
   [NodeType.HTTP_REQUEST]: HttpRequestNode,
   [NodeType.GOOGLE_FORM_TRIGGER]: GoogleFormTriggerNode,
   [NodeType.WEBHOOK_TRIGGER]: WebhookTriggerNode,
+  [NodeType.GITHUB_TRIGGER]: GitHubTriggerNode,
   [NodeType.GEMINI]: GeminiNode,
   [NodeType.ANTHROPIC]: AnthropicNode,
   [NodeType.OPENAI]: OpenAINode,

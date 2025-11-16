@@ -8,6 +8,7 @@ import { manualTriggerExecutor } from "@/features/triggers/components/manual-tri
 import { httpRequestExecutor } from "../components/http-request/executor";
 import { googleFormTriggerExecutor } from "@/features/triggers/components/google-form-trigger/executor";
 import { webhookTriggerExecutor } from "@/features/triggers/components/webhook-trigger/executor";
+import { githubTriggerExecutor } from "@/features/triggers/components/github-trigger/executor";
 import { geminiExecutor } from "../components/gemini/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
 import { openaiExecutor } from "../components/openai/executor";
@@ -25,6 +26,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.HTTP_REQUEST]: httpRequestExecutor,
   [NodeType.GOOGLE_FORM_TRIGGER]: googleFormTriggerExecutor,
   [NodeType.WEBHOOK_TRIGGER]: webhookTriggerExecutor,
+  [NodeType.GITHUB_TRIGGER]: githubTriggerExecutor,
   [NodeType.GEMINI]: geminiExecutor,
   [NodeType.ANTHROPIC]: anthropicExecutor,
   [NodeType.OPENAI]: openaiExecutor,

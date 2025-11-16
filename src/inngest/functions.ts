@@ -21,6 +21,7 @@ import { httpRequestChannel } from "./channels/http-request";
 import { manualTriggerChannel } from "./channels/manual-trigger";
 import { googleFormTriggerChannel } from "./channels/google-form-trigger";
 import { webhookTriggerChannel } from "./channels/webhook-trigger";
+import { githubTriggerChannel } from "./channels/github-trigger";
 import { geminiChannel } from "./channels/gemini";
 import { anthropicChannel } from "./channels/anthropic";
 import { openaiChannel } from "./channels/openai";
@@ -49,6 +50,7 @@ export const executeWorkflow = inngest.createFunction(
       manualTriggerChannel(),
       googleFormTriggerChannel(),
       webhookTriggerChannel(),
+      githubTriggerChannel(),
       geminiChannel(),
       anthropicChannel(),
       openaiChannel(),
