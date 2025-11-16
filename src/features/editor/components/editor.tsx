@@ -25,6 +25,7 @@ import {
   MiniMap,
   Panel,
   ReactFlowInstance,
+  XYPosition,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ZoomSlider } from "@/components/react-flow/zoom-slider";
@@ -35,6 +36,15 @@ import { editorAtom, editorActionsAtom } from "../store/atoms";
 import { NodeType } from "@/generated/prisma/enums";
 import { ExecuteWorkflowButton } from "./execute-workflow-button";
 import type { EditorActions } from "../store/atoms";
+
+const generateEditorId = (): string => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID().replaceAll("-", "");
+  }
+  return (
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  );
+};
 
 export const EditorLoading = (): ReactElement => {
   return <LoadingView message="Loading editor..." />;
@@ -49,11 +59,17 @@ interface HistoryState {
   edges: Edge[];
 }
 
+interface ClipboardState {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 export const Editor = ({ workflowId }: { workflowId: string }) => {
   const { data: workflow } = useSuspenseWorkflow(workflowId);
 
   const setEditor = useSetAtom(editorAtom);
   const setEditorActions = useSetAtom(editorActionsAtom);
+  const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
 
   const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
   const [edges, setEdges] = useState<Edge[]>(workflow.edges);
@@ -63,11 +79,30 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   const isUndoRedoRef: RefObject<boolean> = useRef<boolean>(false);
   const nodesRef: RefObject<Node[]> = useRef<Node[]>(nodes);
   const edgesRef: RefObject<Edge[]> = useRef<Edge[]>(edges);
+  const clipboardRef: RefObject<ClipboardState | null> =
+    useRef<ClipboardState | null>(null);
+  const pasteOffsetRef: RefObject<number> = useRef<number>(0);
+  const pointerPositionRef: RefObject<XYPosition | null> =
+    useRef<XYPosition | null>(null);
 
   useEffect((): void => {
     nodesRef.current = nodes;
     edgesRef.current = edges;
   }, [nodes, edges]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent): void => {
+      pointerPositionRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+    };
+
+    globalThis.addEventListener("mousemove", handleMouseMove);
+    return (): void => {
+      globalThis.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
 
   const saveToHistory: (nodesState: Node[], edgesState: Edge[]) => void =
     useCallback((nodesState: Node[], edgesState: Edge[]): void => {
@@ -230,6 +265,133 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     performDelete(selectedNodeIds, selectedEdgeIds);
   }, [performDelete]);
 
+  const copySelected: () => void = useCallback((): void => {
+    const selectedNodes: Node[] = nodesRef.current.filter(
+      (node: Node): boolean => Boolean(node.selected)
+    );
+
+    if (selectedNodes.length === 0) {
+      return;
+    }
+
+    const selectedNodeIds: Set<string> = new Set(
+      selectedNodes.map((node: Node): string => node.id)
+    );
+
+    const relatedEdges: Edge[] = edgesRef.current.filter(
+      (edge: Edge): boolean =>
+        selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
+    );
+
+    clipboardRef.current = {
+      nodes: structuredClone(selectedNodes),
+      edges: structuredClone(relatedEdges),
+    };
+    pasteOffsetRef.current = 0;
+  }, []);
+
+  const pasteClipboard: () => void = useCallback((): void => {
+    if (!clipboardRef.current || clipboardRef.current.nodes.length === 0) {
+      return;
+    }
+
+    saveToHistory(nodesRef.current, edgesRef.current);
+
+    pasteOffsetRef.current += 1;
+    const fallbackOffset: number = 30 * pasteOffsetRef.current;
+
+    const idMapping: Map<string, string> = new Map();
+    const clipboardNodes: Node[] = clipboardRef.current.nodes;
+
+    const pointerPosition: XYPosition | null = pointerPositionRef.current;
+    const projectedPointer: XYPosition | null =
+      pointerPosition && editor
+        ? editor.screenToFlowPosition({
+            x: pointerPosition.x,
+            y: pointerPosition.y,
+          })
+        : null;
+
+    const [minX, minY]: [number, number] = clipboardNodes.reduce<
+      [number, number]
+    >(
+      (acc: [number, number], node: Node): [number, number] => [
+        Math.min(acc[0], node.position.x),
+        Math.min(acc[1], node.position.y),
+      ],
+      [Infinity, Infinity]
+    );
+
+    const baseOffset: XYPosition =
+      projectedPointer && Number.isFinite(minX) && Number.isFinite(minY)
+        ? {
+            x: projectedPointer.x - minX,
+            y: projectedPointer.y - minY,
+          }
+        : {
+            x: fallbackOffset,
+            y: fallbackOffset,
+          };
+
+    const newNodes: Node[] = clipboardNodes.map((node: Node): Node => {
+      const newId: string = generateEditorId();
+      idMapping.set(node.id, newId);
+
+      const nodeData: Record<string, unknown> = node.data ? structuredClone(node.data) : node.data;
+      const nodePosition: XYPosition = node.position;
+
+      return {
+        ...node,
+        id: newId,
+        position: {
+          x: nodePosition.x + baseOffset.x,
+          y: nodePosition.y + baseOffset.y,
+        },
+        data: nodeData,
+        selected: true,
+        dragging: false,
+      };
+    });
+
+    const newEdges: Edge[] = clipboardRef.current.edges
+      .map((edge: Edge): Edge | null => {
+        const sourceId: string | undefined = idMapping.get(edge.source);
+        const targetId: string | undefined = idMapping.get(edge.target);
+
+        if (!sourceId || !targetId) {
+          return null;
+        }
+
+        const edgeData: Record<string, unknown> | undefined = edge.data ? structuredClone(edge.data) : edge.data;
+
+        return {
+          ...edge,
+          id: generateEditorId(),
+          source: sourceId,
+          target: targetId,
+          data: edgeData,
+          selected: false,
+        };
+      })
+      .filter((edge: Edge | null): edge is Edge => edge !== null);
+
+    setNodes((prevNodes: Node[]): Node[] => {
+      const deselectedNodes: Node[] = prevNodes.map((node: Node): Node => {
+        if (!node.selected) {
+          return node;
+        }
+        return {
+          ...node,
+          selected: false,
+        };
+      });
+
+      return [...deselectedNodes, ...newNodes];
+    });
+
+    setEdges((prevEdges: Edge[]): Edge[] => [...prevEdges, ...newEdges]);
+  }, [editor, saveToHistory]);
+
   useEffect((): void => {
     const actions: EditorActions = {
       deleteNodes,
@@ -272,8 +434,6 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     );
   }, [nodes]);
 
-  const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement;
@@ -307,6 +467,26 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
             edges: newEdges,
           });
         }
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "c") {
+        if (isInputField) {
+          return;
+        }
+
+        event.preventDefault();
+        copySelected();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "v") {
+        if (isInputField) {
+          return;
+        }
+
+        event.preventDefault();
+        pasteClipboard();
         return;
       }
 
@@ -356,7 +536,15 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     return (): void => {
       globalThis.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editor, setNodes, setEdges, saveToHistory, deleteSelected]);
+  }, [
+    editor,
+    setNodes,
+    setEdges,
+    saveToHistory,
+    deleteSelected,
+    copySelected,
+    pasteClipboard,
+  ]);
 
   return (
     <div className="size-full">
