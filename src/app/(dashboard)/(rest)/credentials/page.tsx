@@ -4,6 +4,7 @@ import {
   CredentialsError,
   CredentialsLoading,
 } from "@/features/credentials/components/credentials";
+import { CredentialsToastHandler } from "@/features/credentials/components/credentials-toast-handler";
 import { credentialsParamsLoader } from "@/features/credentials/server/params-loader";
 import { prefetchCredentials } from "@/features/credentials/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
@@ -26,6 +27,7 @@ const Page = async ({ searchParams }: Props) => {
   return (
     <CredentialsContainer>
       <HydrateClient>
+        <CredentialsToastHandler />
         <ErrorBoundary fallback={<CredentialsError />}>
           <Suspense fallback={<CredentialsLoading />}>
             <CredentialsList />

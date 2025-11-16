@@ -1,4 +1,5 @@
 import { CredentialView } from "@/features/credentials/components/credential";
+import { CredentialsToastHandler } from "@/features/credentials/components/credentials-toast-handler";
 import { prefetchCredential } from "@/features/credentials/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
 import { HydrateClient } from "@/trpc/server";
@@ -25,6 +26,7 @@ const Page = async ({ params }: PageProps) => {
     <div className="p-4 pd:px-10 md:py-6 h-full">
       <div className="mx-auto max-w-5xl w-full flex flex-col gap-y-8 h-full">
         <HydrateClient>
+          <CredentialsToastHandler />
           <ErrorBoundary fallback={<CredentialsError />}>
             <Suspense fallback={<CredentialsLoading />}>
               <CredentialView credentialId={credentialId} />
