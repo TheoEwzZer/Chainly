@@ -26,6 +26,7 @@ import { geminiChannel } from "./channels/gemini";
 import { anthropicChannel } from "./channels/anthropic";
 import { openaiChannel } from "./channels/openai";
 import { discordChannel } from "./channels/discord";
+import { googleCalendarChannel } from "./channels/google-calendar";
 
 export const executeWorkflow = inngest.createFunction(
   {
@@ -55,6 +56,7 @@ export const executeWorkflow = inngest.createFunction(
       anthropicChannel(),
       openaiChannel(),
       discordChannel(),
+      googleCalendarChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -78,7 +80,9 @@ export const executeWorkflow = inngest.createFunction(
       }
     );
 
-    const triggerNodeId: string | undefined = (event.data as { triggerNodeId?: string }).triggerNodeId;
+    const triggerNodeId: string | undefined = (
+      event.data as { triggerNodeId?: string }
+    ).triggerNodeId;
 
     const {
       sortedNodes,

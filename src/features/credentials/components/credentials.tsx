@@ -121,6 +121,7 @@ export enum CredentialType {
   ANTHROPIC = "ANTHROPIC",
   GEMINI = "GEMINI",
   DISCORD = "DISCORD",
+  GOOGLE_CALENDAR = "GOOGLE_CALENDAR",
 }
 
 const credentialLogos: Record<CredentialType, string> = {
@@ -128,6 +129,7 @@ const credentialLogos: Record<CredentialType, string> = {
   [CredentialType.ANTHROPIC]: "/logos/anthropic.svg",
   [CredentialType.GEMINI]: "/logos/gemini.svg",
   [CredentialType.DISCORD]: "/logos/discord.svg",
+  [CredentialType.GOOGLE_CALENDAR]: "/logos/google-calendar.svg",
 };
 
 export const CredentialsItem = ({ data }: { data: Credential }) => {

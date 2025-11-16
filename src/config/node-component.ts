@@ -10,6 +10,7 @@ import { GitHubTriggerNode } from "@/features/triggers/components/github-trigger
 import { NodeType } from "@/generated/prisma/enums";
 import type { NodeTypes } from "@xyflow/react";
 import { DiscordNode } from "@/features/executions/components/discord/node";
+import { GoogleCalendarNode } from "@/features/executions/components/google-calendar/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -22,6 +23,7 @@ export const nodeComponents = {
   [NodeType.ANTHROPIC]: AnthropicNode,
   [NodeType.OPENAI]: OpenAINode,
   [NodeType.DISCORD]: DiscordNode,
+  [NodeType.GOOGLE_CALENDAR]: GoogleCalendarNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;

@@ -13,6 +13,7 @@ import { geminiExecutor } from "../components/gemini/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
 import { openaiExecutor } from "../components/openai/executor";
 import { discordExecutor } from "../components/discord/executor";
+import { googleCalendarExecutor } from "../components/google-calendar/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
   context,
@@ -31,6 +32,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.ANTHROPIC]: anthropicExecutor,
   [NodeType.OPENAI]: openaiExecutor,
   [NodeType.DISCORD]: discordExecutor,
+  [NodeType.GOOGLE_CALENDAR]: googleCalendarExecutor,
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor<any> => {

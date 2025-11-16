@@ -72,12 +72,14 @@ model Verification {
 }
 
 model Credential {
-  id        String         @id @default(uuid())
-  name      String
-  value     String
-  type      CredentialType
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id           String         @id @default(uuid())
+  name         String
+  value        String
+  type         CredentialType
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -92,6 +94,7 @@ enum CredentialType {
   ANTHROPIC
   GEMINI
   DISCORD
+  GOOGLE_CALENDAR
 }
 
 model Workflow {
@@ -120,6 +123,7 @@ enum NodeType {
   GEMINI
   OPENAI
   DISCORD
+  GOOGLE_CALENDAR
 }
 
 model Node {

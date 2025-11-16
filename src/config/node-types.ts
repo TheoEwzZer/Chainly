@@ -71,4 +71,10 @@ export const executionNodes: NodeTypeOption[] = [
     description: "Sends a message to a Discord channel.",
     icon: "/logos/discord.svg",
   },
+  {
+    type: NodeType.GOOGLE_CALENDAR,
+    label: "Google Calendar",
+    description: "Fetches events from a Google Calendar for a specific date.",
+    icon: "/logos/google-calendar.svg",
+  },
 ];

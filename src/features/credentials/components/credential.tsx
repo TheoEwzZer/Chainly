@@ -54,6 +54,11 @@ const credentialTypeOptions = [
     value: CredentialType.DISCORD,
     logo: "/logos/discord.svg",
   },
+  {
+    label: "Google Calendar",
+    value: CredentialType.GOOGLE_CALENDAR,
+    logo: "/logos/google-calendar.svg",
+  },
 ];
 
 interface CredentialFormProps {
