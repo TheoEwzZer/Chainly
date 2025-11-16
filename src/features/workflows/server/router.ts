@@ -7,10 +7,7 @@ import {
   Workflow,
 } from "@/generated/prisma/client";
 import prisma from "@/lib/db";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { generateSlug } from "random-word-slugs";
 import { z } from "zod";
 import { sendWorkflowExecution, topologicalSort } from "@/inngest/utils";
