@@ -8,6 +8,7 @@ import {
   type Node,
   type Workflow,
   Prisma,
+  type ExecutionStep,
 } from "@/generated/prisma/client";
 import type { Jsonify } from "inngest/types";
 import { topologicalSort } from "./utils";
@@ -66,11 +67,14 @@ export const executeWorkflow = inngest.createFunction(
       throw new NonRetriableError("Workflow ID is required");
     }
 
-    await step.run("create-execution", async (): Promise<Execution> => {
-      return await prisma.execution.create({
-        data: { workflowId, inngestEventId },
-      });
-    });
+    const executionRecord = await step.run(
+      "create-execution",
+      async (): Promise<Execution> => {
+        return await prisma.execution.create({
+          data: { workflowId, inngestEventId },
+        });
+      }
+    );
 
     const sortedNodes: Jsonify<Node>[] = await step.run(
       "prepare-workflow",
@@ -119,16 +123,70 @@ export const executeWorkflow = inngest.createFunction(
 
     let context: WorkflowContext = event.data.initialData || {};
 
-    for (const node of sortedNodes) {
-      const executor: NodeExecutor = getExecutor(node.type);
-      context = await executor({
-        data: node.data as Record<string, unknown>,
-        nodeId: node.id,
-        context,
-        step,
-        publish,
-        userId,
+    for (const [order, node] of sortedNodes.entries()) {
+      const currentContext: WorkflowContext = context;
+      const stepRecord: ExecutionStep = await prisma.executionStep.upsert({
+        where: {
+          executionId_order: {
+            executionId: executionRecord.id,
+            order,
+          },
+        },
+        create: {
+          executionId: executionRecord.id,
+          nodeId: node.id,
+          nodeType: node.type,
+          order,
+          status: ExecutionStatus.RUNNING,
+          input: currentContext as Prisma.InputJsonValue,
+        },
+        update: {
+          nodeId: node.id,
+          nodeType: node.type,
+          status: ExecutionStatus.RUNNING,
+          input: currentContext as Prisma.InputJsonValue,
+          output: Prisma.JsonNull,
+          error: null,
+          errorStack: null,
+          completedAt: null,
+          startedAt: new Date(),
+        },
       });
+
+      const executor: NodeExecutor = getExecutor(node.type);
+      try {
+        const result: WorkflowContext = await executor({
+          data: node.data as Record<string, unknown>,
+          nodeId: node.id,
+          context: currentContext,
+          step,
+          publish,
+          userId,
+        });
+
+        await prisma.executionStep.update({
+          where: { id: stepRecord.id },
+          data: {
+            status: ExecutionStatus.SUCCESS,
+            completedAt: new Date(),
+            output: result as Prisma.InputJsonValue,
+          },
+        });
+
+        context = result;
+      } catch (error) {
+        await prisma.executionStep.update({
+          where: { id: stepRecord.id },
+          data: {
+            status: ExecutionStatus.FAILED,
+            completedAt: new Date(),
+            error: error instanceof Error ? error.message : "Unknown error",
+            errorStack:
+              error instanceof Error ? error.stack : "No stack trace available",
+          },
+        });
+        throw error;
+      }
     }
 
     await step.run("update-execution", async (): Promise<Execution> => {

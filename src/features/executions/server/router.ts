@@ -18,6 +18,22 @@ export const executionsRouter = createTRPCRouter({
               name: true,
             },
           },
+          steps: {
+            orderBy: { order: "asc" },
+            select: {
+              id: true,
+              nodeId: true,
+              nodeType: true,
+              status: true,
+              order: true,
+              input: true,
+              output: true,
+              error: true,
+              errorStack: true,
+              startedAt: true,
+              completedAt: true,
+            },
+          },
         },
       });
     }),

@@ -125,17 +125,17 @@ model Node {
   workflowId String
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
-  name     String
   type     NodeType
   position Json
   data     Json     @default("{}")
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  outputConnections Connection[] @relation("FromNode")
-  inputConnections  Connection[] @relation("ToNode")
-  credential        Credential?  @relation(fields: [credentialId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  outputConnections Connection[]    @relation("FromNode")
+  inputConnections  Connection[]    @relation("ToNode")
+  credential        Credential?     @relation(fields: [credentialId], references: [id])
   credentialId      String?
+  executionSteps    ExecutionStep[]
 
   @@map("node")
 }
@@ -183,5 +183,35 @@ model Execution {
 
   output Json?
 
+  steps ExecutionStep[]
+
   @@map("execution")
+}
+
+model ExecutionStep {
+  id String @id @default(uuid())
+
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  nodeId   String?
+  node     Node?    @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  nodeType NodeType
+
+  status ExecutionStatus @default(RUNNING)
+  order  Int
+
+  input      Json?
+  output     Json?
+  error      String? @db.Text
+  errorStack String? @db.Text
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([executionId, order], map: "executionId_order")
+  @@index([executionId])
+  @@map("execution_step")
 }
