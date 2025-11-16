@@ -82,7 +82,6 @@ export const workflowsRouter = createTRPCRouter({
           create: {
             type: NodeType.INITIAL,
             position: { x: 0, y: 0 },
-            name: NodeType.INITIAL,
           },
         },
       },
@@ -132,7 +131,6 @@ export const workflowsRouter = createTRPCRouter({
           data: nodes.map((node) => ({
             id: node.id,
             workflowId: id,
-            name: node.type || "unknown",
             type: node.type as NodeType,
             position: node.position as XYPosition,
             data: node.data || {},
