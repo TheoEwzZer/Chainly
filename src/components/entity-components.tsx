@@ -199,7 +199,7 @@ export const EntityPagination = ({
   onPageChange,
   disabled,
 }: EntityPaginationProps): ReactElement | null => {
-  if (totalPages === 0) {
+  if (totalPages < 2) {
     return null;
   }
 
