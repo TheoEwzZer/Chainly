@@ -1,5 +1,12 @@
 import { NodeType } from "@/generated/prisma/enums";
-import { ClockIcon, GlobeIcon, MousePointerIcon, WebhookIcon } from "lucide-react";
+import {
+  Check,
+  ClockIcon,
+  GlobeIcon,
+  MousePointerIcon,
+  Repeat,
+  WebhookIcon,
+} from "lucide-react";
 import type { ComponentType } from "react";
 
 export type NodeTypeOption = {
@@ -83,5 +90,19 @@ export const executionNodes: NodeTypeOption[] = [
     label: "Google Calendar",
     description: "Fetches events from a Google Calendar for a specific date.",
     icon: "/logos/google-calendar.svg",
+  },
+  {
+    type: NodeType.HUMAN_APPROVAL,
+    label: "Human Approval",
+    description:
+      "Pause the workflow and wait for human approval before continuing.",
+    icon: Check,
+  },
+  {
+    type: NodeType.LOOP,
+    label: "Loop",
+    description:
+      "Iterate over an array and execute the following nodes for each item.",
+    icon: Repeat,
   },
 ];

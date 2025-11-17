@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { SaveIcon } from "lucide-react";
+import { SaveIcon, StopCircleIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -16,14 +16,18 @@ import {
   useUpdateWorkflow,
   useUpdateWorkflowName,
 } from "@/features/workflows/hooks/use-workflows";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useAtomValue } from "jotai";
 import { editorAtom } from "../store/atoms";
 import { ReactFlowInstance } from "@xyflow/react";
 import type { Node, Edge } from "@xyflow/react";
-import { NodeType } from "@/generated/prisma/enums";
+import { NodeType, ExecutionStatus } from "@/generated/prisma/enums";
 import { Spinner } from "@/components/ui/spinner";
+import { useTRPC } from "@/trpc/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
   const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
@@ -157,13 +161,98 @@ export const EditorBreadcrumb = ({ workflowId }: { workflowId: string }) => {
   );
 };
 
+export const EditorStopExecutionButton = ({
+  workflowId,
+}: {
+  workflowId: string;
+}) => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const {
+    data: runningExecution,
+    isLoading,
+    refetch,
+  } = useQuery({
+    ...trpc.executions.getRunningByWorkflow.queryOptions({ workflowId }),
+    // Always poll to detect when executions start/stop
+    // Poll every 1 second to balance responsiveness and server load
+    refetchInterval: 1000,
+    // Don't cache stale data - always refetch
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const cancelMutation = useMutation(
+    trpc.executions.cancel.mutationOptions({
+      onSuccess: async () => {
+        toast.success("Execution cancelled");
+        setIsCancelling(true);
+        await queryClient.invalidateQueries(
+          trpc.executions.getRunningByWorkflow.queryOptions({ workflowId })
+        );
+        await refetch();
+        setTimeout(() => {
+          setIsCancelling(false);
+        }, 100);
+        router.refresh();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to cancel execution");
+        setIsCancelling(false);
+      },
+    })
+  );
+
+  const shouldShowButton: boolean = useMemo((): boolean => {
+    if (isCancelling) {
+      return false;
+    }
+    return (
+      !isLoading &&
+      runningExecution !== null &&
+      runningExecution !== undefined &&
+      runningExecution.status === ExecutionStatus.RUNNING
+    );
+  }, [isLoading, runningExecution, isCancelling]);
+
+  if (!shouldShowButton) {
+    return null;
+  }
+
+  if (!runningExecution) {
+    return null;
+  }
+
+  return (
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={(): void => cancelMutation.mutate({ id: runningExecution.id })}
+      disabled={cancelMutation.isPending}
+    >
+      {cancelMutation.isPending ? (
+        <Spinner />
+      ) : (
+        <StopCircleIcon className="size-4 mr-2" />
+      )}
+      {cancelMutation.isPending ? "Stopping..." : "Stop Execution"}
+    </Button>
+  );
+};
+
 export const EditorHeader = ({ workflowId }: { workflowId: string }) => {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 bg-background">
       <SidebarTrigger />
       <div className="flex flex-row items-center justify-between gap-x-4 w-full">
         <EditorBreadcrumb workflowId={workflowId} />
-        <EditorSaveButton workflowId={workflowId} />
+        <div className="flex items-center gap-2">
+          <EditorStopExecutionButton workflowId={workflowId} />
+          <EditorSaveButton workflowId={workflowId} />
+        </div>
       </div>
     </header>
   );

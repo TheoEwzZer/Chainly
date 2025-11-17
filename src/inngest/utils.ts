@@ -1,4 +1,4 @@
-import { Connection, Node, NodeType } from "@/generated/prisma/client";
+import type { Connection, Node, NodeType } from "@/generated/prisma/client";
 import topoSort from "toposort";
 import { inngest } from "./client";
 import { NodeTypeOption, triggerNodes } from "@/config/node-types";
@@ -46,28 +46,28 @@ export const topologicalSort = (
   const triggerTypes = new Set(
     triggerNodes.map((n: NodeTypeOption): NodeType => n.type)
   );
-  
+
   let triggerNodesList: Node[];
-  
+
   if (triggerNodeId) {
     const specifiedTrigger: Node | undefined = nodes.find(
       (node: Node): boolean => node.id === triggerNodeId
     );
-    
+
     if (!specifiedTrigger) {
       throw new Error(`Trigger node with ID ${triggerNodeId} not found`);
     }
-    
+
     if (!triggerTypes.has(specifiedTrigger.type as NodeType)) {
       throw new Error(`Node with ID ${triggerNodeId} is not a trigger node`);
     }
-    
+
     triggerNodesList = [specifiedTrigger];
   } else {
     triggerNodesList = nodes.filter((node: Node): boolean =>
       triggerTypes.has(node.type as NodeType)
     );
-    
+
     if (triggerNodesList.length === 0) {
       throw new Error("No trigger node found in workflow");
     }
@@ -94,7 +94,10 @@ export const topologicalSort = (
       allReachableNodeIds.has(conn.toNodeId)
   );
 
-  if (reachableConnections.length === 0 && reachableNodes.length > triggerNodesList.length) {
+  if (
+    reachableConnections.length === 0 &&
+    reachableNodes.length > triggerNodesList.length
+  ) {
     throw new Error(
       "You must have at least one connection between reachable nodes"
     );
@@ -164,5 +167,22 @@ export const sendWorkflowExecution = async (data: {
     id: createId(),
     name: "workflow/execute.workflow",
     data,
+  });
+};
+
+export const publishNodeStatus = async (
+  channelName: string,
+  nodeId: string,
+  status: "success" | "error" | "running" | "initial"
+) => {
+  return inngest.send({
+    id: createId(),
+    name: "node/update-status",
+    data: {
+      channel: channelName,
+      topic: "status",
+      nodeId,
+      status,
+    },
   });
 };

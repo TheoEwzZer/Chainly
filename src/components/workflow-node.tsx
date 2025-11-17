@@ -12,6 +12,7 @@ interface WorkflowNodeProps {
   onSettings?: () => void;
   name?: string;
   description?: string;
+  secondaryDescription?: string;
 }
 
 export const WorkflowNode = ({
@@ -21,6 +22,7 @@ export const WorkflowNode = ({
   onSettings,
   name,
   description,
+  secondaryDescription,
 }: WorkflowNodeProps): ReactElement => {
   return (
     <>
@@ -45,6 +47,11 @@ export const WorkflowNode = ({
           {description && (
             <p className="text-muted-foreground truncate text-sm">
               {description}
+            </p>
+          )}
+          {secondaryDescription && (
+            <p className="text-muted-foreground truncate text-sm">
+              {secondaryDescription}
             </p>
           )}
         </NodeToolbar>

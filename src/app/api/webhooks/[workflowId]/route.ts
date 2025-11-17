@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { NodeType } from "@/generated/prisma/enums";
 import { sendWorkflowExecution } from "@/inngest/utils";
 import { NextURL } from "next/dist/server/web/next-url";
-import { Node } from "@/generated/prisma/client";
+import type { Node } from "@/generated/prisma/client";
 
 const buildHeadersRecord = (request: NextRequest): Record<string, string> => {
   const record: Record<string, string> = {};

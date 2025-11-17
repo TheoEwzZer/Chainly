@@ -2,6 +2,7 @@ import { PAGINATION } from "@/config/constants";
 import prisma from "@/lib/db";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { z } from "zod";
+import { ExecutionStatus } from "@/generated/prisma/enums";
 
 export const executionsRouter = createTRPCRouter({
   getOne: protectedProcedure
@@ -82,5 +83,52 @@ export const executionsRouter = createTRPCRouter({
         hasNextPage,
         hasPreviousPage,
       };
+    }),
+  cancel: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id } = input;
+
+      const execution: {
+        id: string;
+        status: ExecutionStatus;
+        inngestEventId: string;
+      } = await prisma.execution.findFirstOrThrow({
+        where: { id, workflow: { userId: ctx.auth.user.id } },
+        select: { id: true, status: true, inngestEventId: true },
+      });
+
+      if (execution.status !== ExecutionStatus.RUNNING) {
+        throw new Error("Execution is not running and cannot be cancelled");
+      }
+
+      await prisma.execution.update({
+        where: { id },
+        data: {
+          status: ExecutionStatus.FAILED,
+          error: "Execution cancelled by user",
+        },
+      });
+
+      return { success: true };
+    }),
+  getRunningByWorkflow: protectedProcedure
+    .input(z.object({ workflowId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { workflowId } = input;
+
+      return prisma.execution.findFirst({
+        where: {
+          workflowId,
+          workflow: { userId: ctx.auth.user.id },
+          status: ExecutionStatus.RUNNING,
+        },
+        orderBy: { startedAt: "desc" },
+        select: {
+          id: true,
+          status: true,
+          startedAt: true,
+        },
+      });
     }),
 });

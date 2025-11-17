@@ -21,6 +21,7 @@ model User {
   accounts      Account[]
   workflows     Workflow[]
   credentials   Credential[]
+  approvals     Approval[]
 
   @@unique([email])
   @@map("user")
@@ -125,6 +126,8 @@ enum NodeType {
   OPENAI
   DISCORD
   GOOGLE_CALENDAR
+  HUMAN_APPROVAL
+  LOOP
 }
 
 model Node {
@@ -143,6 +146,7 @@ model Node {
   credential        Credential?     @relation(fields: [credentialId], references: [id])
   credentialId      String?
   executionSteps    ExecutionStep[]
+  approvals         Approval[]
 
   @@map("node")
 }
@@ -171,6 +175,14 @@ enum ExecutionStatus {
   RUNNING
   SUCCESS
   FAILED
+  PAUSED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MODIFIED
 }
 
 model Execution {
@@ -190,7 +202,8 @@ model Execution {
 
   output Json?
 
-  steps ExecutionStep[]
+  steps     ExecutionStep[]
+  approvals Approval[]
 
   @@map("execution")
 }
@@ -221,4 +234,30 @@ model ExecutionStep {
   @@unique([executionId, order], map: "executionId_order")
   @@index([executionId])
   @@map("execution_step")
+}
+
+model Approval {
+  id String @id @default(uuid())
+
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  nodeId String
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  status      ApprovalStatus @default(PENDING)
+  message     String?        @db.Text
+  context     Json           @default("{}")
+  response    Json?
+  respondedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([nodeId])
+  @@index([status])
+  @@map("approval")
 }

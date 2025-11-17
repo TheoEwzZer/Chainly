@@ -1,7 +1,7 @@
 import { PAGINATION } from "@/config/constants";
 import type { Edge, Node, XYPosition } from "@xyflow/react";
 import { NodeType } from "@/generated/prisma/enums";
-import {
+import type {
   Node as PrismaNode,
   Connection as PrismaConnection,
   Workflow,

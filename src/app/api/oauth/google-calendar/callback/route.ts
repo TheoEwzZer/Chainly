@@ -3,7 +3,7 @@ import { getTokensFromCode } from "@/lib/google-oauth";
 import prisma from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
 import { CredentialType } from "@/generated/prisma/enums";
-import { Credential } from "@/generated/prisma/client";
+import type { Credential } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

@@ -29,12 +29,14 @@ const STATUS_BADGE_STYLES: Record<ExecutionStatus, string> = {
   RUNNING: "bg-blue-50 text-blue-700 border border-blue-200",
   SUCCESS: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   FAILED: "bg-red-50 text-red-700 border border-red-200",
+  PAUSED: "bg-yellow-50 text-yellow-700 border border-yellow-200",
 };
 
 const STATUS_DOT_STYLES: Record<ExecutionStatus, string> = {
   RUNNING: "bg-blue-500",
   SUCCESS: "bg-emerald-500",
   FAILED: "bg-red-500",
+  PAUSED: "bg-yellow-500",
 };
 
 const humanize = (value: string): string => {

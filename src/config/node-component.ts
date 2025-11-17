@@ -12,6 +12,8 @@ import { NodeType } from "@/generated/prisma/enums";
 import type { NodeTypes } from "@xyflow/react";
 import { DiscordNode } from "@/features/executions/components/discord/node";
 import { GoogleCalendarNode } from "@/features/executions/components/google-calendar/node";
+import { HumanApprovalNode } from "@/features/executions/components/human-approval/node";
+import { LoopNode } from "@/features/executions/components/loop/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -26,6 +28,8 @@ export const nodeComponents = {
   [NodeType.OPENAI]: OpenAINode,
   [NodeType.DISCORD]: DiscordNode,
   [NodeType.GOOGLE_CALENDAR]: GoogleCalendarNode,
+  [NodeType.HUMAN_APPROVAL]: HumanApprovalNode,
+  [NodeType.LOOP]: LoopNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;

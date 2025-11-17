@@ -2,7 +2,7 @@ import { sendWorkflowExecution } from "@/inngest/utils";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { NodeType } from "@/generated/prisma/enums";
-import { Node } from "@/generated/prisma/client";
+import type { Node } from "@/generated/prisma/client";
 
 export async function POST(
   request: NextRequest

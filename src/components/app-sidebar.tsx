@@ -1,6 +1,12 @@
 "use client";
 
-import { FolderOpenIcon, HistoryIcon, KeyIcon, LogOutIcon } from "lucide-react";
+import {
+  FolderOpenIcon,
+  HistoryIcon,
+  KeyIcon,
+  LogOutIcon,
+  CheckCircleIcon,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +43,11 @@ const menuItems = [
         title: "Executions",
         icon: HistoryIcon,
         url: "/executions",
+      },
+      {
+        title: "Approvals",
+        icon: CheckCircleIcon,
+        url: "/approvals",
       },
     ],
   },

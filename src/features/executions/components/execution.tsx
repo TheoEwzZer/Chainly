@@ -6,6 +6,7 @@ import {
   XCircleIcon,
   Loader2Icon,
   ClockIcon,
+  StopCircleIcon,
 } from "lucide-react";
 import { ReactElement, useState } from "react";
 import { useSuspenseExecution } from "../hooks/use-executions";
@@ -25,6 +26,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ExecutionTimeline } from "./execution-timeline";
+import { useTRPC } from "@/trpc/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const getStatusIcon = (status: ExecutionStatus): ReactElement => {
   switch (status) {
@@ -50,6 +55,24 @@ export const ExecutionView = ({
 }): ReactElement => {
   const { data: execution } = useSuspenseExecution(executionId);
   const [showStackTrace, setShowStackTrace] = useState<boolean>(false);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  const cancelMutation = useMutation(
+    trpc.executions.cancel.mutationOptions({
+      onSuccess: () => {
+        toast.success("Execution cancelled");
+        queryClient.invalidateQueries(
+          trpc.executions.getOne.queryOptions({ id: executionId })
+        );
+        router.refresh();
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to cancel execution");
+      },
+    })
+  );
 
   const duration: number | null = execution.completedAt
     ? Math.round(
@@ -57,18 +80,33 @@ export const ExecutionView = ({
       )
     : null;
 
+  const isRunning: boolean = execution.status === ExecutionStatus.RUNNING;
+
   return (
     <div className="space-y-6">
       <Card className="shadow-none">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            {getStatusIcon(execution.status)}
-            <div>
-              <CardTitle>{formatStatus(execution.status)}</CardTitle>
-              <CardDescription>
-                Execution for workflow {execution.workflow.name}
-              </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {getStatusIcon(execution.status)}
+              <div>
+                <CardTitle>{formatStatus(execution.status)}</CardTitle>
+                <CardDescription>
+                  Execution for workflow {execution.workflow.name}
+                </CardDescription>
+              </div>
             </div>
+            {isRunning && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={(): void => cancelMutation.mutate({ id: executionId })}
+                disabled={cancelMutation.isPending}
+              >
+                <StopCircleIcon className="size-4 mr-2" />
+                {cancelMutation.isPending ? "Stopping..." : "Stop"}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
