@@ -3,6 +3,7 @@ import {
   Check,
   ClockIcon,
   GlobeIcon,
+  GitBranch,
   MousePointerIcon,
   Repeat,
   WebhookIcon,
@@ -104,5 +105,12 @@ export const executionNodes: NodeTypeOption[] = [
     description:
       "Iterate over an array and execute the following nodes for each item.",
     icon: Repeat,
+  },
+  {
+    type: NodeType.CONDITIONAL,
+    label: "Conditional",
+    description:
+      "Evaluate a condition and route the workflow to different paths based on the result.",
+    icon: GitBranch,
   },
 ];

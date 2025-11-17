@@ -15,7 +15,10 @@ import {
   NodeStatusIndicator,
 } from "@/components/react-flow/node-status-indicator";
 import { useAtomValue } from "jotai";
-import { EditorActions, editorActionsAtom } from "@/features/editor/store/atoms";
+import {
+  EditorActions,
+  editorActionsAtom,
+} from "@/features/editor/store/atoms";
 
 interface BaseExecutionNodeProps extends NodeProps {
   icon: LucideIcon | string;

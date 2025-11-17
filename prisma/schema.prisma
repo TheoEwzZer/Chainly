@@ -128,6 +128,7 @@ enum NodeType {
   GOOGLE_CALENDAR
   HUMAN_APPROVAL
   LOOP
+  CONDITIONAL
 }
 
 model Node {

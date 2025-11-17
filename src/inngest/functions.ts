@@ -30,6 +30,7 @@ import { googleCalendarChannel } from "./channels/google-calendar";
 import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { humanApprovalChannel } from "./channels/human-approval";
 import { loopChannel } from "./channels/loop";
+import { conditionalChannel } from "./channels/conditional";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
 import { NodeType } from "@/generated/prisma/enums";
 
@@ -65,6 +66,7 @@ export const executeWorkflow = inngest.createFunction(
       googleCalendarChannel(),
       humanApprovalChannel(),
       loopChannel(),
+      conditionalChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -169,6 +171,10 @@ export const executeWorkflow = inngest.createFunction(
     const failedNodeIds: Set<string> = new Set();
     const executedInLoopNodeIds: Set<string> = new Set();
     let hasAnyNodeFailed: boolean = false;
+    const conditionalResults = new Map<
+      string,
+      { result: boolean; variableName: string }
+    >();
 
     let startIndex: number = 0;
     if (resumeFromNodeId) {
@@ -208,6 +214,71 @@ export const executeWorkflow = inngest.createFunction(
       const currentContext: WorkflowContext = context;
 
       if (executedInLoopNodeIds.has(node.id)) {
+        continue;
+      }
+
+      const shouldSkipConditional: boolean = ((): boolean => {
+        const incomingConnections: Connection[] = (
+          connections as unknown as Connection[]
+        ).filter((conn: Connection): boolean => conn.toNodeId === node.id);
+
+        if (incomingConnections.length === 0) {
+          return false;
+        }
+
+        let hasValidConnection: boolean = false;
+        let hasConditionalConnection: boolean = false;
+
+        for (const connection of incomingConnections) {
+          const conditionalResult:
+            | { result: boolean; variableName: string }
+            | undefined = conditionalResults.get(connection.fromNodeId);
+          if (conditionalResult) {
+            hasConditionalConnection = true;
+            const expectedOutput: "true" | "false" = conditionalResult.result
+              ? "true"
+              : "false";
+            if (connection.fromOutput === expectedOutput) {
+              hasValidConnection = true;
+              break;
+            }
+          } else {
+            hasValidConnection = true;
+            break;
+          }
+        }
+
+        return hasConditionalConnection && !hasValidConnection;
+      })();
+
+      if (shouldSkipConditional) {
+        await prisma.executionStep.upsert({
+          where: {
+            executionId_order: {
+              executionId: executionRecord.id,
+              order,
+            },
+          },
+          create: {
+            executionId: executionRecord.id,
+            nodeId: node.id,
+            nodeType: node.type,
+            order,
+            status: ExecutionStatus.SUCCESS,
+            input: currentContext as Prisma.InputJsonValue,
+            output: currentContext as Prisma.InputJsonValue,
+            completedAt: new Date(),
+          },
+          update: {
+            nodeId: node.id,
+            nodeType: node.type,
+            status: ExecutionStatus.SUCCESS,
+            input: currentContext as Prisma.InputJsonValue,
+            output: currentContext as Prisma.InputJsonValue,
+            completedAt: new Date(),
+            startedAt: new Date(),
+          },
+        });
         continue;
       }
 
@@ -301,6 +372,22 @@ export const executeWorkflow = inngest.createFunction(
         });
 
         context = result;
+
+        if (node.type === NodeType.CONDITIONAL) {
+          const conditionalData = node.data as {
+            variableName?: string;
+          };
+          if (conditionalData?.variableName) {
+            const conditionalResult = result[conditionalData.variableName] as {
+              result?: boolean;
+            };
+            const resultValue: boolean = conditionalResult?.result ?? false;
+            conditionalResults.set(node.id, {
+              result: resultValue,
+              variableName: conditionalData.variableName,
+            });
+          }
+        }
 
         if (node.type === NodeType.LOOP) {
           const loopVariableName: string | undefined = (

@@ -17,6 +17,7 @@ import { discordExecutor } from "../components/discord/executor";
 import { googleCalendarExecutor } from "../components/google-calendar/executor";
 import { humanApprovalExecutor } from "../components/human-approval/executor";
 import { loopExecutor } from "../components/loop/executor";
+import { conditionalExecutor } from "../components/conditional/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
   context,
@@ -39,6 +40,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.GOOGLE_CALENDAR]: googleCalendarExecutor,
   [NodeType.HUMAN_APPROVAL]: humanApprovalExecutor,
   [NodeType.LOOP]: loopExecutor,
+  [NodeType.CONDITIONAL]: conditionalExecutor,
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor<any> => {
