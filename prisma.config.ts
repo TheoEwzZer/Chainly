@@ -8,7 +8,6 @@ export default defineConfig({
   migrations: {
     path: path.join("prisma", "migrations"),
   },
-  engine: "classic",
   datasource: {
     url: env("DATABASE_URL"),
   },
