@@ -8,6 +8,9 @@ export interface EditorActions {
   deleteEdges: (edgeIds: string[]) => void;
   deleteNodeById: (nodeId: string) => void;
   deleteSelected: () => void;
+  markAsSaved: () => void;
 }
 
 export const editorActionsAtom = atom<EditorActions | null>(null);
+
+export const hasUnsavedChangesAtom = atom<boolean>(false);
