@@ -19,18 +19,26 @@ import {
 import { type ChangeEvent, useEffect, useRef, useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { useAtomValue } from "jotai";
-import { editorAtom } from "../store/atoms";
+import {
+  editorAtom,
+  hasUnsavedChangesAtom,
+  editorActionsAtom,
+  EditorActions,
+} from "../store/atoms";
 import { ReactFlowInstance } from "@xyflow/react";
 import type { Node, Edge } from "@xyflow/react";
-import { NodeType, ExecutionStatus } from "@/generated/prisma/enums";
+import { ExecutionStatus } from "@/generated/prisma/enums";
 import { Spinner } from "@/components/ui/spinner";
 import { useTRPC } from "@/trpc/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { createNodesPayload } from "../utils";
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
   const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
+  const hasUnsavedChanges: boolean = useAtomValue(hasUnsavedChangesAtom);
+  const editorActions: EditorActions | null = useAtomValue(editorActionsAtom);
   const saveWorkflow = useUpdateWorkflow();
 
   const handleSave = () => {
@@ -41,21 +49,20 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
     const nodes: Node[] = editor.getNodes();
     const edges: Edge[] = editor.getEdges();
 
-    const isValidNodeType = (value: unknown): value is NodeType =>
-      Object.values(NodeType).includes(value as NodeType);
+    const nodesPayload = createNodesPayload(nodes);
 
-    const nodesPayload = nodes.map((node: Node) => ({
-      id: node.id,
-      position: node.position,
-      data: (node.data ?? {}) as Record<string, any>,
-      type: isValidNodeType(node.type) ? node.type : undefined,
-    }));
-
-    saveWorkflow.mutate({
-      id: workflowId,
-      nodes: nodesPayload,
-      edges,
-    });
+    saveWorkflow.mutate(
+      {
+        id: workflowId,
+        nodes: nodesPayload,
+        edges,
+      },
+      {
+        onSuccess: (): void => {
+          editorActions?.markAsSaved();
+        },
+      }
+    );
   };
 
   const { isPending } = saveWorkflow;
@@ -65,6 +72,9 @@ export const EditorSaveButton = ({ workflowId }: { workflowId: string }) => {
       <Button size="sm" onClick={handleSave} disabled={isPending}>
         {isPending ? <Spinner /> : <SaveIcon className="size-4" />}
         {isPending ? "Saving..." : "Save"}
+        {hasUnsavedChanges && !isPending && (
+          <span className="ml-1.5 size-1.5 rounded-full bg-white" />
+        )}
       </Button>
     </div>
   );

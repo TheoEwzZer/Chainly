@@ -8,6 +8,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   RefObject,
 } from "react";
@@ -32,7 +33,11 @@ import { ZoomSlider } from "@/components/react-flow/zoom-slider";
 import { nodeComponents } from "@/config/node-component";
 import { AddNodeButton } from "./add-node-button";
 import { useSetAtom, useAtomValue } from "jotai";
-import { editorAtom, editorActionsAtom } from "../store/atoms";
+import {
+  editorAtom,
+  editorActionsAtom,
+  hasUnsavedChangesAtom,
+} from "../store/atoms";
 import { NodeType } from "@/generated/prisma/enums";
 import { ExecuteWorkflowButton } from "./execute-workflow-button";
 import type { EditorActions } from "../store/atoms";
@@ -69,6 +74,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
 
   const setEditor = useSetAtom(editorAtom);
   const setEditorActions = useSetAtom(editorActionsAtom);
+  const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const editor: ReactFlowInstance | null = useAtomValue(editorAtom);
 
   const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
@@ -133,6 +139,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     }, []);
 
   const lastSavedStateRef: RefObject<string> = useRef<string>("");
+  const isInitializedRef: RefObject<boolean> = useRef<boolean>(false);
 
   const getStateKeyWithoutSelection: (
     nodesState: Node[],
@@ -162,6 +169,61 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     []
   );
 
+  const normalizeState: (stateStr: string) => string = useCallback(
+    (stateStr: string): string => {
+      try {
+        const parsed = JSON.parse(stateStr);
+        const normalizedNodes = parsed.nodes.map((node: any) => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: node.data,
+        }));
+        const normalizedEdges = parsed.edges.map((edge: any) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: edge.targetHandle,
+        }));
+        return JSON.stringify({
+          nodes: normalizedNodes,
+          edges: normalizedEdges,
+        });
+      } catch {
+        return stateStr;
+      }
+    },
+    []
+  );
+
+  const getNormalizedStateKey = useCallback(
+    (nodesState: Node[], edgesState: Edge[]): string => {
+      const stateKey: string = getStateKeyWithoutSelection(nodesState, edgesState);
+      return normalizeState(stateKey);
+    },
+    [getStateKeyWithoutSelection, normalizeState]
+  );
+
+  const initializeSavedState = useCallback((): void => {
+    const normalizedSavedStateKey: string = getNormalizedStateKey(
+      workflow.nodes,
+      workflow.edges
+    );
+    lastSavedStateRef.current = normalizedSavedStateKey;
+    setHasUnsavedChanges(false);
+  }, [
+    workflow.nodes,
+    workflow.edges,
+    getNormalizedStateKey,
+    setHasUnsavedChanges,
+  ]);
+
+  useLayoutEffect((): void => {
+    initializeSavedState();
+    isInitializedRef.current = true;
+  }, [initializeSavedState]);
+
   useEffect((): void => {
     if (historyRef.current.length === 0) {
       historyRef.current = [
@@ -171,12 +233,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         },
       ];
       historyIndexRef.current = 0;
-      lastSavedStateRef.current = getStateKeyWithoutSelection(
-        workflow.nodes,
-        workflow.edges
-      );
+      initializeSavedState();
     }
-  }, [workflow.nodes, workflow.edges, getStateKeyWithoutSelection]);
+  }, [workflow.nodes, workflow.edges, initializeSavedState]);
 
   const onNodesChange: (changes: NodeChange[]) => void = useCallback(
     (changes: NodeChange[]): void =>
@@ -396,12 +455,21 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     setEdges((prevEdges: Edge[]): Edge[] => [...prevEdges, ...newEdges]);
   }, [editor, saveToHistory]);
 
+  const markAsSaved: () => void = useCallback((): void => {
+    lastSavedStateRef.current = getNormalizedStateKey(
+      nodesRef.current,
+      edgesRef.current
+    );
+    setHasUnsavedChanges(false);
+  }, [getNormalizedStateKey, setHasUnsavedChanges]);
+
   useEffect((): void => {
     const actions: EditorActions = {
       deleteNodes,
       deleteEdges,
       deleteNodeById,
       deleteSelected,
+      markAsSaved,
     };
     setEditorActions(actions);
   }, [
@@ -409,6 +477,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     deleteEdges,
     deleteNodeById,
     deleteSelected,
+    markAsSaved,
     setEditorActions,
   ]);
   useEffect(() => {
@@ -417,20 +486,64 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       return;
     }
 
-    const stateKey: string = getStateKeyWithoutSelection(nodes, edges);
-    if (stateKey === lastSavedStateRef.current) {
+    const normalizedStateKey: string = getNormalizedStateKey(nodes, edges);
+    if (normalizedStateKey === lastSavedStateRef.current) {
       return;
     }
 
     const timeoutId: NodeJS.Timeout = setTimeout((): void => {
       saveToHistory(nodes, edges);
-      lastSavedStateRef.current = stateKey;
     }, 300);
 
     return (): void => {
       clearTimeout(timeoutId);
     };
-  }, [nodes, edges, saveToHistory, getStateKeyWithoutSelection]);
+  }, [nodes, edges, saveToHistory, getNormalizedStateKey]);
+
+  useEffect((): void => {
+    if (!isInitializedRef.current || lastSavedStateRef.current === "") {
+      return;
+    }
+
+    const normalizedStateKey: string = getNormalizedStateKey(nodes, edges);
+    const normalizedWorkflowStateKey: string = getNormalizedStateKey(
+      workflow.nodes,
+      workflow.edges
+    );
+    const normalizedLastSavedStateKey: string = lastSavedStateRef.current;
+
+    if (
+      normalizedStateKey === normalizedWorkflowStateKey &&
+      normalizedWorkflowStateKey !== "" &&
+      normalizedLastSavedStateKey !== normalizedStateKey
+    ) {
+      lastSavedStateRef.current = normalizedStateKey;
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    if (
+      normalizedStateKey === normalizedWorkflowStateKey &&
+      normalizedWorkflowStateKey !== "" &&
+      normalizedLastSavedStateKey !== normalizedWorkflowStateKey
+    ) {
+      lastSavedStateRef.current = normalizedWorkflowStateKey;
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    const hasUnsavedChanges: boolean =
+      normalizedStateKey !== lastSavedStateRef.current;
+
+    setHasUnsavedChanges(hasUnsavedChanges);
+  }, [
+    nodes,
+    edges,
+    workflow.nodes,
+    workflow.edges,
+    getNormalizedStateKey,
+    setHasUnsavedChanges,
+  ]);
 
   const hasManualTrigger: boolean = useMemo((): boolean => {
     return nodes.some(
@@ -438,13 +551,29 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     );
   }, [nodes]);
 
+  const isInputField = useCallback((target: HTMLElement): boolean => {
+    return (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable
+    );
+  }, []);
+
+  const applyHistoryState = useCallback(
+    (state: HistoryState): void => {
+      isUndoRedoRef.current = true;
+      const newNodes: Node[] = structuredClone(state.nodes);
+      const newEdges: Edge[] = structuredClone(state.edges);
+      setNodes(newNodes);
+      setEdges(newEdges);
+    },
+    [setNodes, setEdges]
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement;
-      const isInputField: boolean =
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable;
+      const isInput: boolean = isInputField(target);
 
       const selection: Selection | null = globalThis.getSelection();
       const hasTextSelection: boolean =
@@ -455,7 +584,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         event.key === "z" &&
         !event.shiftKey
       ) {
-        if (isInputField) {
+        if (isInput) {
           return;
         }
 
@@ -464,22 +593,13 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
           historyIndexRef.current--;
           const previousState: HistoryState =
             historyRef.current[historyIndexRef.current];
-          isUndoRedoRef.current = true;
-          const newNodes: Node[] = structuredClone(previousState.nodes);
-          const newEdges: Edge[] = structuredClone(previousState.edges);
-          setNodes(newNodes);
-          setEdges(newEdges);
-
-          lastSavedStateRef.current = JSON.stringify({
-            nodes: newNodes,
-            edges: newEdges,
-          });
+          applyHistoryState(previousState);
         }
         return;
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === "c") {
-        if (isInputField || hasTextSelection) {
+        if (isInput || hasTextSelection) {
           return;
         }
 
@@ -489,7 +609,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       }
 
       if ((event.ctrlKey || event.metaKey) && event.key === "v") {
-        if (isInputField || hasTextSelection) {
+        if (isInput || hasTextSelection) {
           return;
         }
 
@@ -504,7 +624,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
           event.key === "z" &&
           event.shiftKey)
       ) {
-        if (isInputField) {
+        if (isInput) {
           return;
         }
 
@@ -513,22 +633,13 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
           historyIndexRef.current++;
           const nextState: HistoryState =
             historyRef.current[historyIndexRef.current];
-          isUndoRedoRef.current = true;
-          const newNodes: Node[] = structuredClone(nextState.nodes);
-          const newEdges: Edge[] = structuredClone(nextState.edges);
-          setNodes(newNodes);
-          setEdges(newEdges);
-
-          lastSavedStateRef.current = JSON.stringify({
-            nodes: newNodes,
-            edges: newEdges,
-          });
+          applyHistoryState(nextState);
         }
         return;
       }
 
       if (event.key === "Delete" || event.key === "Backspace") {
-        if (isInputField) {
+        if (isInput) {
           return;
         }
 
@@ -546,9 +657,8 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     };
   }, [
     editor,
-    setNodes,
-    setEdges,
-    saveToHistory,
+    isInputField,
+    applyHistoryState,
     deleteSelected,
     copySelected,
     pasteClipboard,
