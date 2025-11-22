@@ -34,6 +34,42 @@ import { conditionalChannel } from "./channels/conditional";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
 import { NodeType } from "@/generated/prisma/enums";
 
+const getChannelForNodeType = (nodeType: NodeType) => {
+  switch (nodeType) {
+    case NodeType.MANUAL_TRIGGER:
+      return manualTriggerChannel();
+    case NodeType.HTTP_REQUEST:
+      return httpRequestChannel();
+    case NodeType.GOOGLE_FORM_TRIGGER:
+      return googleFormTriggerChannel();
+    case NodeType.WEBHOOK_TRIGGER:
+      return webhookTriggerChannel();
+    case NodeType.GITHUB_TRIGGER:
+      return githubTriggerChannel();
+    case NodeType.SCHEDULE_TRIGGER:
+      return scheduleTriggerChannel();
+    case NodeType.ANTHROPIC:
+      return anthropicChannel();
+    case NodeType.GEMINI:
+      return geminiChannel();
+    case NodeType.OPENAI:
+      return openaiChannel();
+    case NodeType.DISCORD:
+      return discordChannel();
+    case NodeType.GOOGLE_CALENDAR:
+      return googleCalendarChannel();
+    case NodeType.HUMAN_APPROVAL:
+      return humanApprovalChannel();
+    case NodeType.LOOP:
+      return loopChannel();
+    case NodeType.CONDITIONAL:
+      return conditionalChannel();
+    case NodeType.INITIAL:
+    default:
+      return null; // INITIAL nodes don't have status channels
+  }
+};
+
 export const executeWorkflow = inngest.createFunction(
   {
     id: "execute-workflow",
@@ -166,6 +202,20 @@ export const executeWorkflow = inngest.createFunction(
     if (!userId) {
       throw new NonRetriableError("User ID not found");
     }
+
+    await step.run("reset-all-nodes-to-initial", async (): Promise<void> => {
+      for (const node of sortedNodes) {
+        const channel = getChannelForNodeType(node.type as NodeType);
+        if (channel) {
+          await publish(
+            channel.status({
+              nodeId: node.id,
+              status: "initial",
+            })
+          );
+        }
+      }
+    });
 
     let context: WorkflowContext = eventData.initialData || {};
     const failedNodeIds: Set<string> = new Set();

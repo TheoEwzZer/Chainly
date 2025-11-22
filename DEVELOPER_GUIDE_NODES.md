@@ -718,6 +718,33 @@ export const executeWorkflow = inngest.createFunction(
 );
 ```
 
+**Important: Update `getChannelForNodeType` function**
+
+When adding a new node type, you must also update the `getChannelForNodeType` helper function in the same file. This function is used to reset all node statuses to "initial" at the start of workflow execution.
+
+```typescript
+// Helper function to get the channel for a node type
+const getChannelForNodeType = (nodeType: NodeType) => {
+  switch (nodeType) {
+    case NodeType.MANUAL_TRIGGER:
+      return manualTriggerChannel();
+    // ... existing cases
+    case NodeType.YOUR_NEW_NODE:
+      return yourNodeChannel();
+    case NodeType.INITIAL:
+    default:
+      return null; // INITIAL nodes don't have status channels
+  }
+};
+```
+
+**Why this is important:**
+
+- At the start of each workflow execution, all nodes are automatically reset to "initial" status
+- This ensures a clean state even if nodes had different statuses from previous executions
+- The function maps each `NodeType` to its corresponding channel for status updates
+- If you forget to add your node type here, its status won't be reset at execution start
+
 ---
 
 ### Step 8: Add Credentials Support (Optional)
@@ -955,6 +982,7 @@ return {
 - ✅ Check that the channel is added in `src/inngest/functions.ts`
 - ✅ Check that `useNodeStatus` uses the correct channel name
 - ✅ Check that server actions return the correct token
+- ✅ Check that your node type is added to `getChannelForNodeType` function in `src/inngest/functions.ts` (required for status reset at execution start)
 
 ### Handlebars templates don't work
 
@@ -1015,7 +1043,7 @@ Use this checklist to ensure all files are in place:
 - [ ] `src/config/node-types.ts` - Node metadata
 - [ ] `src/config/node-component.ts` - Component registration
 - [ ] `src/features/executions/lib/executor-registry.ts` - Executor registration
-- [ ] `src/inngest/functions.ts` - Channel addition
+- [ ] `src/inngest/functions.ts` - Channel addition and `getChannelForNodeType` update
 
 ### Optional Files
 
