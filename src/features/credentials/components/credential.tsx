@@ -59,6 +59,11 @@ const credentialTypeOptions = [
     value: CredentialType.GOOGLE_CALENDAR,
     logo: "/logos/google-calendar.svg",
   },
+  {
+    label: "Resend",
+    value: CredentialType.RESEND,
+    logo: "/logos/resend.svg",
+  },
 ];
 
 interface CredentialFormProps {

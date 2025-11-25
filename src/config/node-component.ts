@@ -15,6 +15,7 @@ import { GoogleCalendarNode } from "@/features/executions/components/google-cale
 import { HumanApprovalNode } from "@/features/executions/components/human-approval/node";
 import { LoopNode } from "@/features/executions/components/loop/node";
 import { ConditionalNode } from "@/features/executions/components/conditional/node";
+import { EmailNode } from "@/features/executions/components/email/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -32,6 +33,7 @@ export const nodeComponents = {
   [NodeType.HUMAN_APPROVAL]: HumanApprovalNode,
   [NodeType.LOOP]: LoopNode,
   [NodeType.CONDITIONAL]: ConditionalNode,
+  [NodeType.EMAIL]: EmailNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;

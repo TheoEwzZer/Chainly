@@ -4,6 +4,7 @@ import {
   ClockIcon,
   GlobeIcon,
   GitBranch,
+  MailIcon,
   MousePointerIcon,
   Repeat,
   WebhookIcon,
@@ -112,5 +113,11 @@ export const executionNodes: NodeTypeOption[] = [
     description:
       "Evaluate a condition and route the workflow to different paths based on the result.",
     icon: GitBranch,
+  },
+  {
+    type: NodeType.EMAIL,
+    label: "Email",
+    description: "Sends an email using Resend. Supports HTML and plain text.",
+    icon: MailIcon,
   },
 ];

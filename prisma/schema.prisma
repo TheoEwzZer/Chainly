@@ -94,6 +94,7 @@ enum CredentialType {
   GEMINI
   DISCORD
   GOOGLE_CALENDAR
+  RESEND
 }
 
 model Workflow {
@@ -127,6 +128,7 @@ enum NodeType {
   HUMAN_APPROVAL
   LOOP
   CONDITIONAL
+  EMAIL
 }
 
 model Node {

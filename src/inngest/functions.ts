@@ -31,6 +31,7 @@ import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { humanApprovalChannel } from "./channels/human-approval";
 import { loopChannel } from "./channels/loop";
 import { conditionalChannel } from "./channels/conditional";
+import { emailChannel } from "./channels/email";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
 import { NodeType } from "@/generated/prisma/enums";
 
@@ -64,6 +65,8 @@ const getChannelForNodeType = (nodeType: NodeType) => {
       return loopChannel();
     case NodeType.CONDITIONAL:
       return conditionalChannel();
+    case NodeType.EMAIL:
+      return emailChannel();
     case NodeType.INITIAL:
     default:
       return null; // INITIAL nodes don't have status channels
@@ -103,6 +106,7 @@ export const executeWorkflow = inngest.createFunction(
       humanApprovalChannel(),
       loopChannel(),
       conditionalChannel(),
+      emailChannel(),
     ],
   },
   async ({ event, step, publish }) => {
