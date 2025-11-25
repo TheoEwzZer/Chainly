@@ -14,3 +14,5 @@ export interface EditorActions {
 export const editorActionsAtom = atom<EditorActions | null>(null);
 
 export const hasUnsavedChangesAtom = atom<boolean>(false);
+
+export const hasActiveExecutionAtom = atom<boolean>(false);

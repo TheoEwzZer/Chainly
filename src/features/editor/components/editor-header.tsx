@@ -18,11 +18,12 @@ import {
 } from "@/features/workflows/hooks/use-workflows";
 import { type ChangeEvent, useEffect, useRef, useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useAtom } from "jotai";
 import {
   editorAtom,
   hasUnsavedChangesAtom,
   editorActionsAtom,
+  hasActiveExecutionAtom,
   EditorActions,
 } from "../store/atoms";
 import { ReactFlowInstance } from "@xyflow/react";
@@ -180,6 +181,10 @@ export const EditorStopExecutionButton = ({
   const queryClient = useQueryClient();
   const router = useRouter();
   const [isCancelling, setIsCancelling] = useState(false);
+  const [hasActiveExecution, setHasActiveExecution] = useAtom(
+    hasActiveExecutionAtom
+  );
+  const wasRunningRef = useRef<boolean>(false);
 
   const {
     data: runningExecution,
@@ -187,13 +192,30 @@ export const EditorStopExecutionButton = ({
     refetch,
   } = useQuery({
     ...trpc.executions.getRunningByWorkflow.queryOptions({ workflowId }),
-    // Always poll to detect when executions start/stop
-    // Poll every 1 second to balance responsiveness and server load
-    refetchInterval: 1000,
-    // Don't cache stale data - always refetch
-    staleTime: 0,
-    gcTime: 0,
+    // Poll frequently only when there's an active execution, otherwise don't poll
+    refetchInterval: hasActiveExecution ? 3000 : false,
+    staleTime: 1000,
+    gcTime: 5000,
   });
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const isRunning: boolean =
+      runningExecution !== null &&
+      runningExecution !== undefined &&
+      runningExecution.status === ExecutionStatus.RUNNING;
+
+    if (isRunning) {
+      wasRunningRef.current = true;
+      setHasActiveExecution(true);
+    } else if (wasRunningRef.current) {
+      wasRunningRef.current = false;
+      setHasActiveExecution(false);
+    }
+  }, [runningExecution, isLoading, setHasActiveExecution]);
 
   const cancelMutation = useMutation(
     trpc.executions.cancel.mutationOptions({
