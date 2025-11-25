@@ -260,5 +260,7 @@ model Approval {
   @@index([executionId])
   @@index([nodeId])
   @@index([status])
+  @@index([executionId, nodeId])
+  @@index([executionId, nodeId, status])
   @@map("approval")
 }
