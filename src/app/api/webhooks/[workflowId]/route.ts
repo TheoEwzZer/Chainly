@@ -5,6 +5,8 @@ import { sendWorkflowExecution } from "@/inngest/utils";
 import { NextURL } from "next/dist/server/web/next-url";
 import type { Node } from "@/generated/prisma/client";
 import { verifyWebhookSecret } from "@/lib/webhook-security";
+import { checkRateLimit, rateLimitResponse, RateLimitResult } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 const buildHeadersRecord = (request: NextRequest): Record<string, string> => {
   const record: Record<string, string> = {};
@@ -23,6 +25,16 @@ export async function POST(
 ): Promise<NextResponse<{ success: boolean; error?: string }>> {
   try {
     const { workflowId } = await params;
+
+    const ip: string =
+      request.headers.get("x-forwarded-for")?.split(",")[0] ??
+      request.headers.get("x-real-ip") ??
+      "anonymous";
+    const rateLimitResult: RateLimitResult = checkRateLimit(`webhook:${workflowId}:${ip}`);
+
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult);
+    }
     const url: NextURL = request.nextUrl;
     const nodeId: string | null = url.searchParams.get("nodeId");
 
@@ -110,7 +122,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Webhook trigger error:", error);
+    Sentry.captureException(error, {
+      tags: { component: "webhook-trigger" },
+    });
     return NextResponse.json(
       { success: false, error: "Failed to enqueue workflow execution" },
       { status: 500 }

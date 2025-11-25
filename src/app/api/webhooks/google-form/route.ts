@@ -4,6 +4,8 @@ import prisma from "@/lib/db";
 import { NodeType } from "@/generated/prisma/enums";
 import type { Node } from "@/generated/prisma/client";
 import { verifyWebhookSecret } from "@/lib/webhook-security";
+import { checkRateLimit, rateLimitResponse, RateLimitResult } from "@/lib/rate-limit";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(
   request: NextRequest
@@ -12,6 +14,18 @@ export async function POST(
     const url = new URL(request.url);
     const workflowId: string | null = url.searchParams.get("workflowId");
     const nodeId: string | null = url.searchParams.get("nodeId");
+
+    const ip: string =
+      request.headers.get("x-forwarded-for")?.split(",")[0] ??
+      request.headers.get("x-real-ip") ??
+      "anonymous";
+    const rateLimitResult: RateLimitResult = checkRateLimit(
+      `google-form-webhook:${workflowId ?? "unknown"}:${ip}`
+    );
+
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult);
+    }
 
     if (!workflowId) {
       return NextResponse.json(
@@ -107,7 +121,9 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Google Form Webhook Error:", error);
+    Sentry.captureException(error, {
+      tags: { component: "google-form-webhook" },
+    });
     return NextResponse.json(
       { success: false, error: "Failed to process Google Form submission" },
       { status: 500 }
