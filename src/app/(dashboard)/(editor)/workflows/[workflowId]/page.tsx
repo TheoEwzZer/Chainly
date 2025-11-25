@@ -4,10 +4,10 @@ import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { HydrateClient } from "@/trpc/server";
 import {
-  Editor,
   EditorError,
   EditorLoading,
 } from "@/features/editor/components/editor";
+import { LazyEditor } from "@/features/editor/components/editor-lazy";
 import { EditorHeader } from "@/features/editor/components/editor-header";
 
 interface PageProps {
@@ -28,7 +28,7 @@ const Page = async ({ params }: PageProps) => {
         <Suspense fallback={<EditorLoading />}>
           <EditorHeader workflowId={workflowId} />
           <main className="flex-1">
-            <Editor workflowId={workflowId} />
+            <LazyEditor workflowId={workflowId} />
           </main>
         </Suspense>
       </ErrorBoundary>

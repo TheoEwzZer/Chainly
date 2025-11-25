@@ -10,7 +10,7 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => {
           href="/"
           className="flex items-center gap-2 self-center font-medium"
         >
-          <Image src="/logos/logo.svg" alt="Chainly" width={30} height={30} />
+          <Image src="/logos/logo.svg" alt="Chainly" width={30} height={30} priority />
           Chainly
         </Link>
         {children}

@@ -68,6 +68,7 @@ export const AppSidebar = (): ReactElement => {
                 alt="Chainly"
                 width={30}
                 height={30}
+                priority
               />
               <span className="font-semibold text-sm">Chainly</span>
             </Link>
