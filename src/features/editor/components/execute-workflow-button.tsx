@@ -6,11 +6,12 @@ import {
 } from "@/features/workflows/hooks/use-workflows";
 import { FlaskConicalIcon } from "lucide-react";
 import type { ReactElement } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   editorAtom,
   editorActionsAtom,
   hasUnsavedChangesAtom,
+  hasActiveExecutionAtom,
   EditorActions,
 } from "../store/atoms";
 import { ReactFlowInstance } from "@xyflow/react";
@@ -39,6 +40,7 @@ export const ExecuteWorkflowButton = ({
   const hasUnsavedChanges: boolean = useAtomValue(hasUnsavedChangesAtom);
   const editorActions: EditorActions | null = useAtomValue(editorActionsAtom);
   const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
+  const setHasActiveExecution = useSetAtom(hasActiveExecutionAtom);
 
   const performExecute = async (): Promise<void> => {
     if (!editor) {
@@ -60,6 +62,7 @@ export const ExecuteWorkflowButton = ({
         editorActions?.markAsSaved();
       }
 
+      setHasActiveExecution(true);
       executeWorkflow.mutate({ id: workflowId });
     } catch (error) {
       console.error("Failed to save before executing:", error);

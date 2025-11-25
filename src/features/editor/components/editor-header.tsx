@@ -199,6 +199,25 @@ export const EditorStopExecutionButton = ({
   });
 
   useEffect(() => {
+    if (!hasActiveExecution) {
+      return;
+    }
+
+    refetch();
+    const timeouts: NodeJS.Timeout[] = [
+      setTimeout(() => refetch(), 500),
+      setTimeout(() => refetch(), 1000),
+      setTimeout(() => refetch(), 2000),
+    ];
+
+    return () => {
+      for (const timeout of timeouts) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [hasActiveExecution, refetch]);
+
+  useEffect(() => {
     if (isLoading) {
       return;
     }
