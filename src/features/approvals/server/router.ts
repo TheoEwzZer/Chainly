@@ -12,6 +12,7 @@ import type {
 import { sendWorkflowExecution, publishNodeStatus } from "@/inngest/utils";
 import { humanApprovalChannel } from "@/inngest/channels/human-approval";
 import { inngest } from "@/inngest/client";
+import * as Sentry from "@sentry/nextjs";
 
 export const approvalsRouter = createTRPCRouter({
   listPending: protectedProcedure.query(async ({ ctx }) => {
@@ -171,7 +172,9 @@ export const approvalsRouter = createTRPCRouter({
             "success"
           );
         } catch (error) {
-          console.error("Failed to publish status update:", error);
+          Sentry.captureException(error, {
+            tags: { component: "approval-status-update" },
+          });
         }
       } else {
         const allSteps: ExecutionStep[] = await prisma.executionStep.findMany({
@@ -303,7 +306,9 @@ export const approvalsRouter = createTRPCRouter({
             "error"
           );
         } catch (error) {
-          console.error("Failed to publish status update:", error);
+          Sentry.captureException(error, {
+            tags: { component: "approval-status-update" },
+          });
         }
       } else {
         const allSteps: ExecutionStep[] = await prisma.executionStep.findMany({
