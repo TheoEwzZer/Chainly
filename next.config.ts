@@ -86,6 +86,7 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-slot",
       "@radix-ui/react-tooltip",
       "@tanstack/react-query",
+      "@xyflow/react",
     ],
   },
 
