@@ -123,6 +123,7 @@ export const GitHubTriggerNode = memo(
           defaultValues={{
             variableName: nodeData.variableName,
             events: nodeData.events,
+            secret: nodeData.secret,
             nodeId: props.id,
           }}
           onRegenerateSecret={handleRegenerateSecret}

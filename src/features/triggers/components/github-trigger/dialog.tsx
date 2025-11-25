@@ -15,7 +15,7 @@ import {
   FieldDescription,
 } from "@/components/ui/field";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, RefreshCcwIcon, ShieldCheckIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { useForm, Controller, useWatch } from "react-hook-form";
@@ -99,7 +99,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: GitHubTriggerFormValues) => void;
   defaultValues?: Partial<GitHubTriggerFormValues>;
-  onRegenerateSecret?: () => void;
+  onRegenerateSecret: () => void;
 }
 
 export const GitHubTriggerDialog = ({
@@ -107,6 +107,7 @@ export const GitHubTriggerDialog = ({
   onOpenChange,
   onSubmit,
   defaultValues = {},
+  onRegenerateSecret,
 }: Props): ReactElement => {
   const params: { workflowId: string } = useParams<{ workflowId: string }>();
   const { workflowId } = params;
@@ -118,6 +119,16 @@ export const GitHubTriggerDialog = ({
       },
       onError: (): void => {
         toast.error("Failed to copy webhook URL");
+      },
+    });
+
+  const { copyToClipboard: copySecretToClipboard, isCopied: isSecretCopied } =
+    useCopyToClipboard({
+      onCopy: (): void => {
+        toast.success("Secret copied to clipboard");
+      },
+      onError: (): void => {
+        toast.error("Failed to copy secret");
       },
     });
 
@@ -135,6 +146,12 @@ export const GitHubTriggerDialog = ({
     name: "variableName",
     defaultValue: defaultValues.variableName || "github",
   });
+
+  const watchedSecret: string = useWatch({
+    control: form.control,
+    name: "secret",
+    defaultValue: defaultValues.secret || "",
+  }) || "";
 
   useEffect((): void => {
     if (open) {
@@ -283,6 +300,58 @@ export const GitHubTriggerDialog = ({
             </div>
           </div>
 
+          {/* Webhook Secret */}
+          <div className="rounded-lg bg-muted p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheckIcon className="size-4 text-green-600" />
+              <h4 className="font-medium text-sm">Webhook Secret (Recommended)</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              GitHub will use this secret to sign webhook payloads. This ensures
+              that requests come from GitHub and not from malicious actors.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={watchedSecret || "Click 'Generate' to create a secret"}
+                placeholder="Click 'Generate' to create a secret"
+                className="text-xs font-mono flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onRegenerateSecret();
+                  toast.success("New secret generated");
+                }}
+              >
+                <RefreshCcwIcon className="size-4" />
+                {watchedSecret ? "Regenerate" : "Generate"}
+              </Button>
+              {watchedSecret && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copySecretToClipboard(watchedSecret)}
+                >
+                  {isSecretCopied ? (
+                    <>
+                      <CheckIcon className="size-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon className="size-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+
           {/* Setup Instructions */}
           <div className="rounded-lg bg-muted p-4 space-y-2">
             <h4 className="font-medium text-sm">Setup instructions</h4>
@@ -301,8 +370,8 @@ export const GitHubTriggerDialog = ({
                 </code>
               </li>
               <li>
-                <strong>Secret:</strong> Leave empty (optional - for HMAC
-                validation)
+                <strong>Secret:</strong> Paste the webhook secret above{" "}
+                <span className="text-green-600 font-medium">(recommended for security)</span>
               </li>
               <li>
                 <strong>SSL verification:</strong> Keep enabled (recommended)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGoogleOAuth2AuthUrl } from "@/lib/google-oauth";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { createSignedState } from "@/lib/webhook-security";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -16,9 +17,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = request.nextUrl;
     const credentialId: string | null = searchParams.get("credentialId");
 
-    const state: string = JSON.stringify({
+    const state: string = createSignedState({
       userId: session.user.id,
       credentialId: credentialId || null,
+      exp: Date.now() + 10 * 60 * 1000,
     });
 
     const authUrl: string = getGoogleOAuth2AuthUrl(state);

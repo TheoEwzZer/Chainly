@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { NodeType } from "@/generated/prisma/enums";
 import type { Node } from "@/generated/prisma/client";
+import { verifyGitHubSignature } from "@/lib/webhook-security";
 
 export async function POST(
   request: NextRequest
@@ -55,16 +56,46 @@ export async function POST(
       (node.data as Record<string, unknown>) || {};
     const configuredEvents: string[] = (nodeData.events as string[]) || [];
     const variableName: string = (nodeData.variableName as string) || "github";
+    const webhookSecret: string | undefined = nodeData.secret as
+      | string
+      | undefined;
 
     const githubEvent: string | null = request.headers.get("x-github-event");
     const githubDelivery: string | null =
       request.headers.get("x-github-delivery");
+    const githubSignature: string | null = request.headers.get(
+      "x-hub-signature-256"
+    );
 
     if (!githubEvent) {
       return NextResponse.json(
         { success: false, error: "Missing X-GitHub-Event header" },
         { status: 400 }
       );
+    }
+
+    const rawBody: string = await request.text();
+
+    if (webhookSecret) {
+      if (!githubSignature) {
+        return NextResponse.json(
+          { success: false, error: "Missing X-Hub-Signature-256 header" },
+          { status: 401 }
+        );
+      }
+
+      const isValidSignature: boolean = verifyGitHubSignature(
+        rawBody,
+        githubSignature,
+        webhookSecret
+      );
+
+      if (!isValidSignature) {
+        return NextResponse.json(
+          { success: false, error: "Invalid webhook signature" },
+          { status: 401 }
+        );
+      }
     }
 
     if (
@@ -76,9 +107,10 @@ export async function POST(
         message: "Event ignored (not in configured events list)",
       });
     }
+
     let body: unknown;
     try {
-      body = await request.json();
+      body = JSON.parse(rawBody);
     } catch {
       return NextResponse.json(
         { success: false, error: "Request body must be valid JSON" },

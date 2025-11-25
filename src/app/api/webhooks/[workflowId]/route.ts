@@ -4,6 +4,7 @@ import { NodeType } from "@/generated/prisma/enums";
 import { sendWorkflowExecution } from "@/inngest/utils";
 import { NextURL } from "next/dist/server/web/next-url";
 import type { Node } from "@/generated/prisma/client";
+import { verifyWebhookSecret } from "@/lib/webhook-security";
 
 const buildHeadersRecord = (request: NextRequest): Record<string, string> => {
   const record: Record<string, string> = {};
@@ -71,7 +72,7 @@ export async function POST(
     const providedSecret: string | null =
       request.headers.get("x-chainly-secret");
 
-    if (!providedSecret || providedSecret !== storedSecret) {
+    if (!verifyWebhookSecret(providedSecret, storedSecret)) {
       return NextResponse.json(
         { success: false, error: "Invalid X-Chainly-Secret header" },
         { status: 401 }

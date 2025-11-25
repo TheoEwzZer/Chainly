@@ -4,6 +4,13 @@ import prisma from "@/lib/db";
 import { encrypt } from "@/lib/encryption";
 import { CredentialType } from "@/generated/prisma/enums";
 import type { Credential } from "@/generated/prisma/client";
+import { verifySignedState } from "@/lib/webhook-security";
+
+interface OAuthState {
+  userId: string;
+  credentialId: string | null;
+  exp: number;
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -34,17 +41,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    let parsedState: { userId: string; credentialId: string | null } | null =
-      null;
-    if (state) {
-      try {
-        parsedState = JSON.parse(state);
-      } catch {
-        // Invalid state, continue without it
-      }
+    const parsedState: OAuthState | null = verifySignedState<OAuthState>(state);
+
+    if (!parsedState) {
+      return NextResponse.redirect(
+        new URL(
+          `/credentials?error=${encodeURIComponent(
+            "Invalid or tampered state parameter"
+          )}`,
+          request.url
+        )
+      );
     }
 
-    if (!parsedState?.userId) {
+    if (parsedState.exp && Date.now() > parsedState.exp) {
+      return NextResponse.redirect(
+        new URL(
+          `/credentials?error=${encodeURIComponent(
+            "OAuth session expired. Please try again."
+          )}`,
+          request.url
+        )
+      );
+    }
+
+    if (!parsedState.userId) {
       return NextResponse.redirect(
         new URL(
           `/credentials?error=${encodeURIComponent("Invalid state parameter")}`,
