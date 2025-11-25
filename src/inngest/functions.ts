@@ -772,18 +772,12 @@ export const publishNodeStatusUpdate = inngest.createFunction(
     await step.run("publish-status", async () => {
       if (channelName === "human-approval-execution") {
         const statusToPublish = status as "success" | "error" | "initial";
-        console.log(
-          `Publishing status update for node ${nodeId}: ${statusToPublish}`
-        );
         await publish(
           humanApprovalChannel().status({
             nodeId,
             status: statusToPublish,
           })
         );
-        console.log(`Status update published for node ${nodeId}`);
-      } else {
-        console.warn(`Unknown channel: ${channelName}`);
       }
     });
   }
