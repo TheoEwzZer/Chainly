@@ -69,6 +69,83 @@ interface ClipboardState {
   edges: Edge[];
 }
 
+const HISTORY_SIZE = 50;
+
+class CircularHistoryBuffer {
+  private buffer: (HistoryState | null)[];
+  private head: number = 0;
+  private tail: number = 0;
+  private count: number = 0;
+  private currentIndex: number = -1;
+
+  constructor(size: number = HISTORY_SIZE) {
+    this.buffer = new Array(size).fill(null);
+  }
+
+  push(state: HistoryState): void {
+    if (this.currentIndex < this.count - 1) {
+      this.count = this.currentIndex + 1;
+    }
+
+    if (this.count > 0) {
+      this.head = (this.head + 1) % this.buffer.length;
+    }
+
+    this.buffer[this.head] = state;
+    this.count = Math.min(this.count + 1, this.buffer.length);
+    this.currentIndex = this.count - 1;
+
+    if (this.count === this.buffer.length && this.head === this.tail) {
+      this.tail = (this.tail + 1) % this.buffer.length;
+    }
+  }
+
+  canUndo(): boolean {
+    return this.currentIndex > 0;
+  }
+
+  canRedo(): boolean {
+    return this.currentIndex < this.count - 1;
+  }
+
+  undo(): HistoryState | null {
+    if (!this.canUndo()) return null;
+    this.currentIndex--;
+    const index: number = (this.tail + this.currentIndex) % this.buffer.length;
+    return this.buffer[index];
+  }
+
+  redo(): HistoryState | null {
+    if (!this.canRedo()) return null;
+    this.currentIndex++;
+    const index: number = (this.tail + this.currentIndex) % this.buffer.length;
+    return this.buffer[index];
+  }
+
+  current(): HistoryState | null {
+    if (this.count === 0) return null;
+    const index: number = (this.tail + this.currentIndex) % this.buffer.length;
+    return this.buffer[index];
+  }
+
+  isEmpty(): boolean {
+    return this.count === 0;
+  }
+}
+
+const shallowCloneNodes = (nodes: Node[]): Node[] =>
+  nodes.map((node: Node) => ({
+    ...node,
+    data: { ...node.data },
+    position: { ...node.position },
+  }));
+
+const shallowCloneEdges = (edges: Edge[]): Edge[] =>
+  edges.map((edge: Edge) => ({
+    ...edge,
+    data: edge.data ? { ...edge.data } : undefined,
+  }));
+
 export const Editor = ({ workflowId }: { workflowId: string }) => {
   const { data: workflow } = useSuspenseWorkflow(workflowId);
 
@@ -80,8 +157,9 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
   const [edges, setEdges] = useState<Edge[]>(workflow.edges);
 
-  const historyRef: RefObject<HistoryState[]> = useRef<HistoryState[]>([]);
-  const historyIndexRef: RefObject<number> = useRef<number>(-1);
+  const historyBufferRef = useRef<CircularHistoryBuffer>(
+    new CircularHistoryBuffer()
+  );
   const isUndoRedoRef: RefObject<boolean> = useRef<boolean>(false);
   const nodesRef: RefObject<Node[]> = useRef<Node[]>(nodes);
   const edgesRef: RefObject<Edge[]> = useRef<Edge[]>(edges);
@@ -118,24 +196,11 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       }
 
       const newState: HistoryState = {
-        nodes: structuredClone(nodesState),
-        edges: structuredClone(edgesState),
+        nodes: shallowCloneNodes(nodesState),
+        edges: shallowCloneEdges(edgesState),
       };
 
-      if (historyIndexRef.current < historyRef.current.length - 1) {
-        historyRef.current = historyRef.current.slice(
-          0,
-          historyIndexRef.current + 1
-        );
-      }
-
-      historyRef.current.push(newState);
-      historyIndexRef.current = historyRef.current.length - 1;
-
-      if (historyRef.current.length > 50) {
-        historyRef.current.shift();
-        historyIndexRef.current--;
-      }
+      historyBufferRef.current.push(newState);
     }, []);
 
   const lastSavedStateRef: RefObject<string> = useRef<string>("");
@@ -199,7 +264,10 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
 
   const getNormalizedStateKey = useCallback(
     (nodesState: Node[], edgesState: Edge[]): string => {
-      const stateKey: string = getStateKeyWithoutSelection(nodesState, edgesState);
+      const stateKey: string = getStateKeyWithoutSelection(
+        nodesState,
+        edgesState
+      );
       return normalizeState(stateKey);
     },
     [getStateKeyWithoutSelection, normalizeState]
@@ -225,14 +293,11 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   }, [initializeSavedState]);
 
   useEffect((): void => {
-    if (historyRef.current.length === 0) {
-      historyRef.current = [
-        {
-          nodes: structuredClone(workflow.nodes),
-          edges: structuredClone(workflow.edges),
-        },
-      ];
-      historyIndexRef.current = 0;
+    if (historyBufferRef.current.isEmpty()) {
+      historyBufferRef.current.push({
+        nodes: shallowCloneNodes(workflow.nodes),
+        edges: shallowCloneEdges(workflow.edges),
+      });
       initializeSavedState();
     }
   }, [workflow.nodes, workflow.edges, initializeSavedState]);
@@ -343,8 +408,8 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
     );
 
     clipboardRef.current = {
-      nodes: structuredClone(selectedNodes),
-      edges: structuredClone(relatedEdges),
+      nodes: shallowCloneNodes(selectedNodes),
+      edges: shallowCloneEdges(relatedEdges),
     };
     pasteOffsetRef.current = 0;
   }, []);
@@ -397,7 +462,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
       idMapping.set(node.id, newId);
 
       const nodeData: Record<string, unknown> = node.data
-        ? structuredClone(node.data)
+        ? { ...node.data }
         : node.data;
       const nodePosition: XYPosition = node.position;
 
@@ -424,7 +489,7 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         }
 
         const edgeData: Record<string, unknown> | undefined = edge.data
-          ? structuredClone(edge.data)
+          ? { ...edge.data }
           : edge.data;
 
         return {
@@ -562,8 +627,8 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
   const applyHistoryState = useCallback(
     (state: HistoryState): void => {
       isUndoRedoRef.current = true;
-      const newNodes: Node[] = structuredClone(state.nodes);
-      const newEdges: Edge[] = structuredClone(state.edges);
+      const newNodes: Node[] = shallowCloneNodes(state.nodes);
+      const newEdges: Edge[] = shallowCloneEdges(state.edges);
       setNodes(newNodes);
       setEdges(newEdges);
     },
@@ -589,10 +654,8 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         }
 
         event.preventDefault();
-        if (historyIndexRef.current > 0) {
-          historyIndexRef.current--;
-          const previousState: HistoryState =
-            historyRef.current[historyIndexRef.current];
+        const previousState: HistoryState | null = historyBufferRef.current.undo();
+        if (previousState) {
           applyHistoryState(previousState);
         }
         return;
@@ -629,10 +692,8 @@ export const Editor = ({ workflowId }: { workflowId: string }) => {
         }
 
         event.preventDefault();
-        if (historyIndexRef.current < historyRef.current.length - 1) {
-          historyIndexRef.current++;
-          const nextState: HistoryState =
-            historyRef.current[historyIndexRef.current];
+        const nextState: HistoryState | null = historyBufferRef.current.redo();
+        if (nextState) {
           applyHistoryState(nextState);
         }
         return;
