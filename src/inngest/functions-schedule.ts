@@ -155,7 +155,29 @@ export const checkSchedules = inngest.createFunction(
       const timezone: string = data.timezone || "UTC";
 
       if (data.scheduleMode === "cron" && data.cronExpression) {
-        shouldTrigger = matchesCron(data.cronExpression, now, timezone);
+        const cronMatches: boolean = matchesCron(data.cronExpression, now, timezone);
+
+        if (cronMatches) {
+          const lastExecution: Date | null = data.lastExecution
+            ? new Date(data.lastExecution)
+            : null;
+
+          if (lastExecution) {
+            const lastExecInTz: Date = toZonedTime(lastExecution, timezone);
+            const nowInTz: Date = toZonedTime(now, timezone);
+
+            const sameMinute: boolean =
+              lastExecInTz.getFullYear() === nowInTz.getFullYear() &&
+              lastExecInTz.getMonth() === nowInTz.getMonth() &&
+              lastExecInTz.getDate() === nowInTz.getDate() &&
+              lastExecInTz.getHours() === nowInTz.getHours() &&
+              lastExecInTz.getMinutes() === nowInTz.getMinutes();
+
+            shouldTrigger = !sameMinute;
+          } else {
+            shouldTrigger = true;
+          }
+        }
       } else if (data.scheduleMode === "datetime" && data.datetime) {
         const [datePart, timePart] = data.datetime.split("T");
         const [year, month, day] = datePart.split("-").map(Number);
@@ -205,20 +227,15 @@ export const checkSchedules = inngest.createFunction(
             triggerNodeId: node.id,
           });
 
-          if (
-            data.scheduleMode === "interval" ||
-            data.scheduleMode === "datetime"
-          ) {
-            await prisma.node.update({
-              where: { id: node.id },
+          await prisma.node.update({
+            where: { id: node.id },
+            data: {
               data: {
-                data: {
-                  ...data,
-                  lastExecution: now.toISOString(),
-                },
+                ...data,
+                lastExecution: now.toISOString(),
               },
-            });
-          }
+            },
+          });
         });
       }
     }
