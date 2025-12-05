@@ -74,6 +74,27 @@ function getBrowserTimezone(): string {
   }
 }
 
+function isHourlyOrLessFrequent(cronExpression: string): boolean {
+  const parts: string[] = cronExpression.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return false;
+  }
+
+  const minuteField: string = parts[0];
+
+  if (
+    minuteField === "*" ||
+    minuteField.includes("/") ||
+    minuteField.includes(",") ||
+    minuteField.includes("-")
+  ) {
+    return false;
+  }
+
+  const minute: number = Number.parseInt(minuteField, 10);
+  return !Number.isNaN(minute) && minute >= 0 && minute <= 59;
+}
+
 const formSchema = z
   .object({
     variableName: z
@@ -88,7 +109,7 @@ const formSchema = z
     cronExpression: z.string().optional(),
     datetime: z.string().optional(),
     intervalValue: z.number().min(1).optional(),
-    intervalUnit: z.enum(["minutes", "hours", "days"]).optional(),
+    intervalUnit: z.enum(["hours", "days"]).optional(),
   })
   .refine(
     (data) => {
@@ -109,6 +130,19 @@ const formSchema = z
       message:
         "Please fill in all required fields for the selected schedule mode",
     }
+  )
+  .refine(
+    (data) => {
+      if (data.scheduleMode === "cron" && data.cronExpression) {
+        return isHourlyOrLessFrequent(data.cronExpression);
+      }
+      return true;
+    },
+    {
+      message:
+        "Cron expression cannot run more frequently than once per hour. The minute field must be a fixed number (e.g., '0 9 * * *' for 9:00 AM).",
+      path: ["cronExpression"],
+    }
   );
 
 export type ScheduleTriggerFormValues = z.infer<typeof formSchema>;
@@ -128,6 +162,13 @@ export const ScheduleTriggerDialog = ({
 }: Props): ReactElement => {
   const browserTimezone: string = getBrowserTimezone();
 
+  const getIntervalUnit = (unit?: string): "hours" | "days" => {
+    if (unit === "days") {
+      return "days";
+    }
+    return "hours"; 
+  };
+
   const form = useForm<ScheduleTriggerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -137,7 +178,7 @@ export const ScheduleTriggerDialog = ({
       cronExpression: defaultValues.cronExpression || "",
       datetime: defaultValues.datetime || "",
       intervalValue: defaultValues.intervalValue || 1,
-      intervalUnit: defaultValues.intervalUnit || "minutes",
+      intervalUnit: getIntervalUnit(defaultValues.intervalUnit),
     },
   });
 
@@ -150,7 +191,7 @@ export const ScheduleTriggerDialog = ({
         cronExpression: defaultValues.cronExpression || "",
         datetime: defaultValues.datetime || "",
         intervalValue: defaultValues.intervalValue || 1,
-        intervalUnit: defaultValues.intervalUnit || "minutes",
+        intervalUnit: getIntervalUnit(defaultValues.intervalUnit),
       });
     }
   }, [open, defaultValues, form, browserTimezone]);
@@ -238,7 +279,7 @@ export const ScheduleTriggerDialog = ({
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="interval" id="interval" />
                     <Label htmlFor="interval" className="cursor-pointer">
-                      Recurring Interval (every X seconds/minutes/hours/days)
+                      Recurring Interval (every X hours/days)
                     </Label>
                   </div>
                 </RadioGroup>
@@ -295,11 +336,14 @@ export const ScheduleTriggerDialog = ({
                   <FieldDescription>
                     Use standard cron syntax: minute hour day month weekday
                     <br />
+                    Note: Minimum frequency is hourly. The minute field must be
+                    a fixed number.
+                    <br />
                     Example: &quot;0 9 * * *&quot; = Every day at 9:00 AM
                     <br />
-                    Example: &quot;0 */2 * * *&quot; = Every 2 hours
+                    Example: &quot;0 */2 * * *&quot; = Every 2 hours at minute 0
                     <br />
-                    Example: &quot;*/15 * * * *&quot; = Every 15 minutes
+                    Example: &quot;30 8 * * 1-5&quot; = Weekdays at 8:30 AM
                   </FieldDescription>
                   <Input
                     {...field}
@@ -383,7 +427,6 @@ export const ScheduleTriggerDialog = ({
                         <SelectValue placeholder="Select unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="minutes">Minutes</SelectItem>
                         <SelectItem value="hours">Hours</SelectItem>
                         <SelectItem value="days">Days</SelectItem>
                       </SelectContent>

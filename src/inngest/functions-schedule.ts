@@ -88,15 +88,15 @@ function matchesCron(
 }
 
 function shouldTriggerInterval(
-  data: ScheduleTriggerFormValues,
+  data: ScheduleTriggerFormValues & { lastExecution?: string },
   now: Date
 ): boolean {
   if (!data.intervalValue || !data.intervalUnit) {
     return false;
   }
 
-  const lastExecution: Date | null = (data as any).lastExecution
-    ? new Date((data as any).lastExecution)
+  const lastExecution: Date | null = data.lastExecution
+    ? new Date(data.lastExecution)
     : null;
 
   if (!lastExecution) {
@@ -105,11 +105,7 @@ function shouldTriggerInterval(
 
   const intervalMs: number =
     data.intervalValue *
-    (data.intervalUnit === "minutes"
-      ? 60 * 1000
-      : data.intervalUnit === "hours"
-      ? 60 * 60 * 1000
-      : 24 * 60 * 60 * 1000);
+    (data.intervalUnit === "hours" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
 
   const nextExecution = new Date(lastExecution.getTime() + intervalMs);
   return now >= nextExecution;
@@ -121,7 +117,7 @@ export const checkSchedules = inngest.createFunction(
     retries: 0,
   },
   {
-    cron: "* * * * *", // Every minute
+    cron: "0 * * * *", // Every hour at minute 0
   },
   async ({ step }) => {
     const now = new Date();
