@@ -8,6 +8,7 @@ import { googleCalendarChannel } from "@/inngest/channels/google-calendar";
 import { GoogleCalendarFormValues } from "./dialog";
 import { getValidAccessToken } from "@/lib/google-calendar-token";
 import ky from "ky";
+import { toZonedTime, format } from "date-fns-tz";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -88,10 +89,11 @@ export const googleCalendarExecutor: NodeExecutor<
       ? Handlebars.compile(dateTemplate)(context)
       : undefined;
 
-    let targetDate: Date;
+    const timezone: string = data.timezone || "UTC";
+
+    let targetDateStr: string;
     if (renderedDate) {
-      targetDate = new Date(renderedDate);
-      if (Number.isNaN(targetDate.getTime())) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(renderedDate)) {
         await step.run(`publish-error-date-${nodeId}`, async () => {
           await publish(
             googleCalendarChannel().status({
@@ -104,18 +106,14 @@ export const googleCalendarExecutor: NodeExecutor<
           "Google Calendar Node: Invalid date format. Use YYYY-MM-DD format."
         );
       }
+      targetDateStr = renderedDate;
     } else {
-      targetDate = new Date();
+      const nowInTz: Date = toZonedTime(new Date(), timezone);
+      targetDateStr = format(nowInTz, "yyyy-MM-dd", { timeZone: timezone });
     }
 
-    const timeMin = new Date(targetDate);
-    timeMin.setHours(0, 0, 0, 0);
-
-    const timeMax = new Date(targetDate);
-    timeMax.setHours(23, 59, 59, 999);
-
-    const timeMinStr: string = timeMin.toISOString();
-    const timeMaxStr: string = timeMax.toISOString();
+    const timeMinStr = `${targetDateStr}T00:00:00`;
+    const timeMaxStr = `${targetDateStr}T23:59:59`;
 
     const result: WorkflowContext = await step.run(
       `google-calendar-fetch-${nodeId}`,
@@ -133,6 +131,7 @@ export const googleCalendarExecutor: NodeExecutor<
                 searchParams: {
                   timeMin: timeMinStr,
                   timeMax: timeMaxStr,
+                  timeZone: timezone,
                   singleEvents: "true",
                   orderBy: "startTime",
                 },
@@ -162,7 +161,8 @@ export const googleCalendarExecutor: NodeExecutor<
             ...context,
             [data.variableName]: {
               events: events,
-              date: targetDate.toISOString().split("T")[0],
+              date: targetDateStr,
+              timezone: timezone,
               count: events.length,
             },
           };
