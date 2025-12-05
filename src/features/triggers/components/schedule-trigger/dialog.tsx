@@ -30,7 +30,50 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-// Définir le schéma de validation avec Zod
+const TIMEZONE_OPTIONS = [
+  // UTC
+  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+  // Europe
+  { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+  { value: "Europe/Paris", label: "Europe/Paris (CET/CEST)" },
+  { value: "Europe/Berlin", label: "Europe/Berlin (CET/CEST)" },
+  { value: "Europe/Madrid", label: "Europe/Madrid (CET/CEST)" },
+  { value: "Europe/Rome", label: "Europe/Rome (CET/CEST)" },
+  { value: "Europe/Amsterdam", label: "Europe/Amsterdam (CET/CEST)" },
+  { value: "Europe/Brussels", label: "Europe/Brussels (CET/CEST)" },
+  { value: "Europe/Zurich", label: "Europe/Zurich (CET/CEST)" },
+  { value: "Europe/Moscow", label: "Europe/Moscow (MSK)" },
+  // Americas
+  { value: "America/New_York", label: "America/New_York (EST/EDT)" },
+  { value: "America/Chicago", label: "America/Chicago (CST/CDT)" },
+  { value: "America/Denver", label: "America/Denver (MST/MDT)" },
+  { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)" },
+  { value: "America/Toronto", label: "America/Toronto (EST/EDT)" },
+  { value: "America/Vancouver", label: "America/Vancouver (PST/PDT)" },
+  { value: "America/Sao_Paulo", label: "America/Sao_Paulo (BRT)" },
+  { value: "America/Mexico_City", label: "America/Mexico_City (CST/CDT)" },
+  // Asia
+  { value: "Asia/Tokyo", label: "Asia/Tokyo (JST)" },
+  { value: "Asia/Shanghai", label: "Asia/Shanghai (CST)" },
+  { value: "Asia/Hong_Kong", label: "Asia/Hong_Kong (HKT)" },
+  { value: "Asia/Singapore", label: "Asia/Singapore (SGT)" },
+  { value: "Asia/Seoul", label: "Asia/Seoul (KST)" },
+  { value: "Asia/Dubai", label: "Asia/Dubai (GST)" },
+  { value: "Asia/Kolkata", label: "Asia/Kolkata (IST)" },
+  // Oceania
+  { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)" },
+  { value: "Australia/Melbourne", label: "Australia/Melbourne (AEST/AEDT)" },
+  { value: "Pacific/Auckland", label: "Pacific/Auckland (NZST/NZDT)" },
+] as const;
+
+function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "UTC";
+  }
+}
+
 const formSchema = z
   .object({
     variableName: z
@@ -41,6 +84,7 @@ const formSchema = z
         "Variable name must start with a letter or underscore"
       ),
     scheduleMode: z.enum(["cron", "datetime", "interval"]),
+    timezone: z.string().min(1, "Timezone is required"),
     cronExpression: z.string().optional(),
     datetime: z.string().optional(),
     intervalValue: z.number().min(1).optional(),
@@ -82,11 +126,14 @@ export const ScheduleTriggerDialog = ({
   onSubmit,
   defaultValues = {},
 }: Props): ReactElement => {
+  const browserTimezone: string = getBrowserTimezone();
+
   const form = useForm<ScheduleTriggerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       variableName: defaultValues.variableName || "schedule",
       scheduleMode: defaultValues.scheduleMode || "cron",
+      timezone: defaultValues.timezone || browserTimezone,
       cronExpression: defaultValues.cronExpression || "",
       datetime: defaultValues.datetime || "",
       intervalValue: defaultValues.intervalValue || 1,
@@ -94,21 +141,20 @@ export const ScheduleTriggerDialog = ({
     },
   });
 
-  // Réinitialiser le formulaire quand le dialog s'ouvre
   useEffect(() => {
     if (open) {
       form.reset({
         variableName: defaultValues.variableName || "schedule",
         scheduleMode: defaultValues.scheduleMode || "cron",
+        timezone: defaultValues.timezone || browserTimezone,
         cronExpression: defaultValues.cronExpression || "",
         datetime: defaultValues.datetime || "",
         intervalValue: defaultValues.intervalValue || 1,
         intervalUnit: defaultValues.intervalUnit || "minutes",
       });
     }
-  }, [open, defaultValues, form]);
+  }, [open, defaultValues, form, browserTimezone]);
 
-  // Pour afficher un exemple d'utilisation de la variable
   const watchVariableName = useWatch({
     control: form.control,
     name: "variableName",
@@ -196,6 +242,44 @@ export const ScheduleTriggerDialog = ({
                     </Label>
                   </div>
                 </RadioGroup>
+              </Field>
+            )}
+          />
+
+          {/* Timezone selector */}
+          <Controller
+            name="timezone"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Timezone</FieldLabel>
+                <FieldDescription>
+                  Select the timezone for schedule evaluation. Your detected
+                  timezone is: {browserTimezone}
+                </FieldDescription>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id={field.name}>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                    {/* Show browser timezone if not in list */}
+                    {!TIMEZONE_OPTIONS.some(
+                      (tz) => tz.value === browserTimezone
+                    ) && (
+                      <SelectItem value={browserTimezone}>
+                        {browserTimezone} (Your timezone)
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
               </Field>
             )}
           />

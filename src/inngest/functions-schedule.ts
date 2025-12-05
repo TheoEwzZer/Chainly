@@ -3,19 +3,53 @@ import prisma from "@/lib/db";
 import { NodeType } from "@/generated/prisma/enums";
 import { sendWorkflowExecution } from "./utils";
 import type { ScheduleTriggerFormValues } from "@/features/triggers/components/schedule-trigger/dialog";
+import { toZonedTime } from "date-fns-tz";
 
-function matchesCron(cronExpression: string, now: Date): boolean {
+function getTimeInTimezone(
+  utcDate: Date,
+  timezone: string
+): {
+  minute: number;
+  hour: number;
+  day: number;
+  month: number;
+  weekday: number;
+} {
+  const zonedDate: Date = toZonedTime(utcDate, timezone);
+
+  return {
+    minute: zonedDate.getMinutes(),
+    hour: zonedDate.getHours(),
+    day: zonedDate.getDate(),
+    month: zonedDate.getMonth() + 1,
+    weekday: zonedDate.getDay(),
+  };
+}
+
+function matchesCron(
+  cronExpression: string,
+  now: Date,
+  timezone: string = "UTC"
+): boolean {
   const parts: string[] = cronExpression.trim().split(/\s+/);
   if (parts.length !== 5) {
     return false;
   }
 
   const [minute, hour, day, month, weekday] = parts;
-  const currentMinute: number = now.getMinutes();
-  const currentHour: number = now.getHours();
-  const currentDay: number = now.getDate();
-  const currentMonth: number = now.getMonth() + 1; // JavaScript months are 0-indexed
-  const currentWeekday: number = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+  const timeInTz: {
+    minute: number;
+    hour: number;
+    day: number;
+    month: number;
+    weekday: number;
+  } = getTimeInTimezone(now, timezone);
+  const currentMinute: number = timeInTz.minute;
+  const currentHour: number = timeInTz.hour;
+  const currentDay: number = timeInTz.day;
+  const currentMonth: number = timeInTz.month;
+  const currentWeekday: number = timeInTz.weekday;
 
   const matches = (value: string, current: number): boolean => {
     if (value === "*") {
@@ -118,18 +152,48 @@ export const checkSchedules = inngest.createFunction(
       }
 
       let shouldTrigger: boolean = false;
+      const timezone: string = data.timezone || "UTC";
 
       if (data.scheduleMode === "cron" && data.cronExpression) {
-        shouldTrigger = matchesCron(data.cronExpression, now);
+        shouldTrigger = matchesCron(data.cronExpression, now, timezone);
       } else if (data.scheduleMode === "datetime" && data.datetime) {
-        const scheduledDate = new Date(data.datetime);
+        const [datePart, timePart] = data.datetime.split("T");
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [hours, minutes] = timePart.split(":").map(Number);
+
+        const nowInTz: Date = toZonedTime(now, timezone);
+
+        const nowMinutes: number = nowInTz.getHours() * 60 + nowInTz.getMinutes();
+        const scheduledMinutes: number = hours * 60 + minutes;
+        const nowDateStr = `${nowInTz.getFullYear()}-${String(
+          nowInTz.getMonth() + 1
+        ).padStart(2, "0")}-${String(nowInTz.getDate()).padStart(2, "0")}`;
+        const scheduledDateStr = `${year}-${String(month).padStart(
+          2,
+          "0"
+        )}-${String(day).padStart(2, "0")}`;
+
         const lastExecution: Date | null = data.lastExecution
           ? new Date(data.lastExecution)
           : null;
+
+        const dateMatches: boolean = nowDateStr === scheduledDateStr;
+        const timeMatches: boolean =
+          nowMinutes >= scheduledMinutes && nowMinutes < scheduledMinutes + 1;
+
+        const scheduledTimestamp: number = new Date(
+          year,
+          month - 1,
+          day,
+          hours,
+          minutes,
+          0
+        ).getTime();
+
         shouldTrigger =
-          now >= scheduledDate &&
-          now.getTime() - scheduledDate.getTime() < 60000 &&
-          (!lastExecution || lastExecution < scheduledDate);
+          dateMatches &&
+          timeMatches &&
+          (!lastExecution || lastExecution.getTime() < scheduledTimestamp);
       } else if (data.scheduleMode === "interval") {
         shouldTrigger = shouldTriggerInterval(data, now);
       }

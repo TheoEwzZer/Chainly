@@ -44,12 +44,29 @@ export const ScheduleTriggerNode = memo((props: NodeProps): ReactElement => {
 
   const nodeData = props.data as ScheduleTriggerFormValues;
 
+  const formatTimezone = (tz: string): string => {
+    if (!tz) {
+      return "";
+    }
+    if (tz === "UTC") {
+      return "UTC";
+    }
+    return tz.split("/").at(-1)?.replaceAll("_", " ") ?? "";
+  };
+
   let description: string = "Not configured";
   if (nodeData?.scheduleMode) {
+    const tzSuffix: string = nodeData.timezone
+      ? ` (${formatTimezone(nodeData.timezone)})`
+      : "";
+
     if (nodeData.scheduleMode === "cron" && nodeData.cronExpression) {
-      description = cronToHumanReadable(nodeData.cronExpression);
+      description = cronToHumanReadable(nodeData.cronExpression) + tzSuffix;
     } else if (nodeData.scheduleMode === "datetime" && nodeData.datetime) {
-      description = `At: ${new Date(nodeData.datetime).toLocaleString()}`;
+      const [datePart, timePart] = nodeData.datetime.split("T");
+      const [year, month, day] = datePart.split("-");
+      const formattedDate = `${day}/${month}/${year} ${timePart}`;
+      description = `At: ${formattedDate}${tzSuffix}`;
     } else if (
       nodeData.scheduleMode === "interval" &&
       nodeData.intervalValue &&
