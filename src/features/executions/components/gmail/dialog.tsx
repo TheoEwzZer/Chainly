@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactElement } from "react";
@@ -769,7 +768,7 @@ export const GmailDialog = ({
                             min={1}
                             max={500}
                             onChange={(e) =>
-                              field.onChange(parseInt(e.target.value) || 50)
+                              field.onChange(Number.parseInt(e.target.value) || 50)
                             }
                             aria-invalid={fieldState.invalid}
                           />
