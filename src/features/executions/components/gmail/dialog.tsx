@@ -34,7 +34,13 @@ import z from "zod";
 import { useCredentialsByType } from "@/features/credentials/hooks/use-credentials";
 import Image from "next/image";
 import Link from "next/link";
-import { KeyIcon, Mail, Calendar as CalendarIcon, Filter, Settings } from "lucide-react";
+import {
+  KeyIcon,
+  Mail,
+  Calendar as CalendarIcon,
+  Filter,
+  Settings,
+} from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format, parse } from "date-fns";
 import {
@@ -51,6 +57,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CheckedState } from "@radix-ui/react-checkbox";
 
 const formSchema = z.object({
   variableName: z
@@ -89,10 +96,14 @@ const formSchema = z.object({
   isSnoozed: z.boolean(),
 
   // Location filters
-  mailbox: z.enum(["inbox", "sent", "drafts", "archive", "snoozed", "anywhere", "all"]),
+  mailboxMode: z.enum(["all", "specific"]),
+  mailboxes: z.array(z.enum(["inbox", "sent", "drafts", "archive", "snoozed"])),
 
   // Category filter (Gmail categories)
-  category: z.enum(["all", "primary", "social", "promotions", "updates", "forums"]),
+  categories: z.array(
+    z.enum(["primary", "social", "promotions", "updates", "forums"])
+  ),
+  categoryAll: z.boolean(),
 
   // Advanced filters - Recipients
   from: z.string().optional(),
@@ -164,8 +175,10 @@ export const GmailDialog = ({
       important: defaultValues.important || false,
       isMuted: defaultValues.isMuted || false,
       isSnoozed: defaultValues.isSnoozed || false,
-      mailbox: defaultValues.mailbox || "inbox",
-      category: defaultValues.category || "all",
+      mailboxMode: defaultValues.mailboxMode || "specific",
+      mailboxes: defaultValues.mailboxes || ["inbox"],
+      categories: defaultValues.categories || [],
+      categoryAll: defaultValues.categoryAll ?? true,
       from: defaultValues.from || "",
       to: defaultValues.to || "",
       cc: defaultValues.cc || "",
@@ -204,8 +217,10 @@ export const GmailDialog = ({
         important: defaultValues.important || false,
         isMuted: defaultValues.isMuted || false,
         isSnoozed: defaultValues.isSnoozed || false,
-        mailbox: defaultValues.mailbox || "inbox",
-        category: defaultValues.category || "all",
+        mailboxMode: defaultValues.mailboxMode || "specific",
+        mailboxes: defaultValues.mailboxes || ["inbox"],
+        categories: defaultValues.categories || [],
+        categoryAll: defaultValues.categoryAll ?? true,
         from: defaultValues.from || "",
         to: defaultValues.to || "",
         cc: defaultValues.cc || "",
@@ -627,87 +642,216 @@ export const GmailDialog = ({
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <h4 className="font-medium">Mailbox</h4>
                 </div>
-                <Controller
-                  name="mailbox"
-                  control={form.control}
-                  render={({ field }) => (
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="grid grid-cols-4 gap-2"
-                    >
+                <div className="grid grid-cols-4 gap-2">
+                  {/* All Mail mode */}
+                  <Controller
+                    name="mailboxMode"
+                    control={form.control}
+                    render={({ field }) => (
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="inbox" id="mailbox-inbox" />
-                        <Label htmlFor="mailbox-inbox">Inbox</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="sent" id="mailbox-sent" />
-                        <Label htmlFor="mailbox-sent">Sent</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="drafts" id="mailbox-drafts" />
-                        <Label htmlFor="mailbox-drafts">Drafts</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="archive" id="mailbox-archive" />
-                        <Label htmlFor="mailbox-archive">Archive</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="snoozed" id="mailbox-snoozed" />
-                        <Label htmlFor="mailbox-snoozed">Snoozed</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="anywhere" id="mailbox-anywhere" />
-                        <Label htmlFor="mailbox-anywhere">Anywhere</Label>
-                      </div>
-                      <div className="flex items-center space-x-2 col-span-2">
-                        <RadioGroupItem value="all" id="mailbox-all" />
+                        <Checkbox
+                          id="mailbox-all"
+                          checked={field.value === "all"}
+                          onCheckedChange={(checked: CheckedState): void => {
+                            if (checked) {
+                              field.onChange("all");
+                              form.setValue("mailboxes", []);
+                            } else {
+                              field.onChange("specific");
+                              form.setValue("mailboxes", ["inbox"]);
+                            }
+                          }}
+                        />
                         <Label htmlFor="mailbox-all">All Mail</Label>
                       </div>
-                    </RadioGroup>
-                  )}
-                />
+                    )}
+                  />
+
+                  {/* Specific mailboxes */}
+                  <Controller
+                    name="mailboxes"
+                    control={form.control}
+                    render={({ field }) => {
+                      const mailboxMode: GmailFormValues["mailboxMode"] =
+                        form.watch("mailboxMode");
+                      const isSpecificMode: boolean =
+                        mailboxMode === "specific";
+                      const mailboxOptions = [
+                        { value: "inbox", label: "Inbox" },
+                        { value: "sent", label: "Sent" },
+                        { value: "drafts", label: "Drafts" },
+                        { value: "archive", label: "Archive" },
+                        { value: "snoozed", label: "Snoozed" },
+                      ] as const;
+
+                      const handleMailboxChange = (
+                        mailbox: (typeof mailboxOptions)[number]["value"],
+                        checked: boolean
+                      ): void => {
+                        if (!isSpecificMode) {
+                          form.setValue("mailboxMode", "specific");
+                        }
+
+                        const currentMailboxes: (typeof field.value)[number][] =
+                          field.value || [];
+                        if (checked) {
+                          field.onChange([...currentMailboxes, mailbox]);
+                        } else {
+                          const newMailboxes: (typeof field.value)[number][] =
+                            currentMailboxes.filter(
+                              (m: (typeof field.value)[number]): boolean =>
+                                m !== mailbox
+                            );
+                          field.onChange(newMailboxes);
+                          if (newMailboxes.length === 0) {
+                            form.setValue("mailboxMode", "all");
+                          }
+                        }
+                      };
+
+                      return (
+                        <>
+                          {mailboxOptions.map(
+                            (
+                              opt: (typeof mailboxOptions)[number]
+                            ): ReactElement => (
+                              <div
+                                key={opt.value}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={`mailbox-${opt.value}`}
+                                  checked={(field.value || []).includes(
+                                    opt.value
+                                  )}
+                                  onCheckedChange={(
+                                    checked: CheckedState
+                                  ): void =>
+                                    handleMailboxChange(opt.value, !!checked)
+                                  }
+                                  disabled={!isSpecificMode}
+                                />
+                                <Label
+                                  htmlFor={`mailbox-${opt.value}`}
+                                  className={
+                                    isSpecificMode
+                                      ? ""
+                                      : "text-muted-foreground"
+                                  }
+                                >
+                                  {opt.label}
+                                </Label>
+                              </div>
+                            )
+                          )}
+                        </>
+                      );
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Category Filter */}
               <div className="space-y-4">
                 <h4 className="font-medium">Category</h4>
-                <Controller
-                  name="category"
-                  control={form.control}
-                  render={({ field }) => (
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="grid grid-cols-3 gap-2"
-                    >
+                <div className="grid grid-cols-3 gap-2">
+                  <Controller
+                    name="categoryAll"
+                    control={form.control}
+                    render={({ field }) => (
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="all" id="cat-all" />
+                        <Checkbox
+                          id="cat-all"
+                          checked={field.value}
+                          onCheckedChange={(checked: CheckedState): void => {
+                            field.onChange(checked);
+                            if (checked) {
+                              form.setValue("categories", []);
+                            }
+                          }}
+                        />
                         <Label htmlFor="cat-all">All</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="primary" id="cat-primary" />
-                        <Label htmlFor="cat-primary">Primary</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="social" id="cat-social" />
-                        <Label htmlFor="cat-social">Social</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="promotions" id="cat-promo" />
-                        <Label htmlFor="cat-promo">Promotions</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="updates" id="cat-updates" />
-                        <Label htmlFor="cat-updates">Updates</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="forums" id="cat-forums" />
-                        <Label htmlFor="cat-forums">Forums</Label>
-                      </div>
-                    </RadioGroup>
-                  )}
-                />
+                    )}
+                  />
+                  <Controller
+                    name="categories"
+                    control={form.control}
+                    render={({ field }) => {
+                      const categoryAll: boolean = form.watch("categoryAll");
+                      const categories = [
+                        { value: "primary", label: "Primary" },
+                        { value: "social", label: "Social" },
+                        { value: "promotions", label: "Promotions" },
+                        { value: "updates", label: "Updates" },
+                        { value: "forums", label: "Forums" },
+                      ] as const;
+
+                      const handleCategoryChange: (
+                        category: (typeof categories)[number]["value"],
+                        checked: boolean
+                      ) => void = (
+                        category: (typeof categories)[number]["value"],
+                        checked: boolean
+                      ): void => {
+                        if (categoryAll) {
+                          form.setValue("categoryAll", false);
+                        }
+                        const currentCategories: (typeof field.value)[number][] =
+                          field.value || [];
+                        if (checked) {
+                          field.onChange([...currentCategories, category]);
+                        } else {
+                          const newCategories: (typeof field.value)[number][] =
+                            currentCategories.filter(
+                              (c: (typeof field.value)[number]): boolean =>
+                                c !== category
+                            );
+                          field.onChange(newCategories);
+                          if (newCategories.length === 0) {
+                            form.setValue("categoryAll", true);
+                          }
+                        }
+                      };
+
+                      return (
+                        <>
+                          {categories.map(
+                            (
+                              cat: (typeof categories)[number]
+                            ): ReactElement => (
+                              <div
+                                key={cat.value}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={`cat-${cat.value}`}
+                                  checked={(field.value || []).includes(
+                                    cat.value
+                                  )}
+                                  onCheckedChange={(
+                                    checked: CheckedState
+                                  ): void =>
+                                    handleCategoryChange(cat.value, !!checked)
+                                  }
+                                  disabled={categoryAll}
+                                />
+                                <Label
+                                  htmlFor={`cat-${cat.value}`}
+                                  className={
+                                    categoryAll ? "text-muted-foreground" : ""
+                                  }
+                                >
+                                  {cat.label}
+                                </Label>
+                              </div>
+                            )
+                          )}
+                        </>
+                      );
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Read Status */}
@@ -1058,7 +1202,9 @@ export const GmailDialog = ({
                                   min={1}
                                   className="w-20"
                                   onChange={(e) =>
-                                    field.onChange(Number.parseInt(e.target.value) || 1)
+                                    field.onChange(
+                                      Number.parseInt(e.target.value) || 1
+                                    )
                                   }
                                 />
                               )}
@@ -1149,7 +1295,9 @@ export const GmailDialog = ({
                             min={1}
                             max={500}
                             onChange={(e) =>
-                              field.onChange(Number.parseInt(e.target.value) || 50)
+                              field.onChange(
+                                Number.parseInt(e.target.value) || 50
+                              )
                             }
                             aria-invalid={fieldState.invalid}
                           />

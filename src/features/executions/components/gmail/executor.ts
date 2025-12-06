@@ -123,13 +123,17 @@ function buildGmailQuery(
     }
     case "older_than": {
       if (data.relativeDateValue && data.relativeDateUnit) {
-        parts.push(`older_than:${data.relativeDateValue}${data.relativeDateUnit}`);
+        parts.push(
+          `older_than:${data.relativeDateValue}${data.relativeDateUnit}`
+        );
       }
       break;
     }
     case "newer_than": {
       if (data.relativeDateValue && data.relativeDateUnit) {
-        parts.push(`newer_than:${data.relativeDateValue}${data.relativeDateUnit}`);
+        parts.push(
+          `newer_than:${data.relativeDateValue}${data.relativeDateUnit}`
+        );
       }
       break;
     }
@@ -185,22 +189,30 @@ function buildGmailQuery(
     parts.push("in:snoozed");
   }
 
-  // Mailbox / Location
-  if (data.mailbox && data.mailbox !== "all") {
-    if (data.mailbox === "anywhere") {
-      parts.push("in:anywhere");
-    } else if (data.mailbox === "archive") {
-      parts.push("in:archive");
-    } else if (data.mailbox === "snoozed") {
-      parts.push("in:snoozed");
+  if (
+    data.mailboxMode === "specific" &&
+    data.mailboxes &&
+    data.mailboxes.length > 0
+  ) {
+    if (data.mailboxes.length === 1) {
+      parts.push(`in:${data.mailboxes[0]}`);
     } else {
-      parts.push(`in:${data.mailbox}`);
+      const mailboxParts: string[] = data.mailboxes.map(
+        (m: (typeof data.mailboxes)[number]): string => `in:${m}`
+      );
+      parts.push(`(${mailboxParts.join(" OR ")})`);
     }
   }
 
-  // Category filter
-  if (data.category && data.category !== "all") {
-    parts.push(`category:${data.category}`);
+  if (!data.categoryAll && data.categories && data.categories.length > 0) {
+    if (data.categories.length === 1) {
+      parts.push(`category:${data.categories[0]}`);
+    } else {
+      const categoryParts: string[] = data.categories.map(
+        (cat: (typeof data.categories)[number]): string => `category:${cat}`
+      );
+      parts.push(`(${categoryParts.join(" OR ")})`);
+    }
   }
 
   // Has content filters
@@ -233,7 +245,12 @@ function buildGmailQuery(
   }
 
   // Size filter
-  if (data.sizeFilter && data.sizeFilter !== "all" && data.sizeValue && data.sizeUnit) {
+  if (
+    data.sizeFilter &&
+    data.sizeFilter !== "all" &&
+    data.sizeValue &&
+    data.sizeUnit
+  ) {
     const sizeOperator = data.sizeFilter === "larger" ? "larger" : "smaller";
     parts.push(`${sizeOperator}:${data.sizeValue}${data.sizeUnit}`);
   }
@@ -488,7 +505,8 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
                 filters: {
                   dateFilter: data.dateFilter,
                   readStatus: data.readStatus,
-                  mailbox: data.mailbox,
+                  mailboxMode: data.mailboxMode,
+                  mailboxes: data.mailboxes,
                   query,
                 },
               },
@@ -544,7 +562,8 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
               filters: {
                 dateFilter: data.dateFilter,
                 readStatus: data.readStatus,
-                mailbox: data.mailbox,
+                mailboxMode: data.mailboxMode,
+                mailboxes: data.mailboxes,
                 query,
               },
             },
