@@ -35,7 +35,9 @@ import z from "zod";
 import { useCredentialsByType } from "@/features/credentials/hooks/use-credentials";
 import Image from "next/image";
 import Link from "next/link";
-import { KeyIcon, Mail, Calendar, Filter, Settings } from "lucide-react";
+import { KeyIcon, Mail, Calendar as CalendarIcon, Filter, Settings } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format, parse } from "date-fns";
 import {
   Empty,
   EmptyHeader,
@@ -375,7 +377,7 @@ export const GmailDialog = ({
               {/* Date Filter Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   <h4 className="font-medium">Date Filter</h4>
                 </div>
                 <Controller
@@ -430,11 +432,19 @@ export const GmailDialog = ({
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel htmlFor={field.name}>Date</FieldLabel>
-                        <Input
-                          {...field}
+                        <DatePicker
                           id={field.name}
-                          type="date"
-                          aria-invalid={fieldState.invalid}
+                          date={
+                            field.value
+                              ? parse(field.value, "yyyy-MM-dd", new Date())
+                              : undefined
+                          }
+                          onDateChange={(date: Date | undefined): void =>
+                            field.onChange(
+                              date ? format(date, "yyyy-MM-dd") : ""
+                            )
+                          }
+                          placeholder="Select a date"
                         />
                         {fieldState.invalid && (
                           <FieldError errors={[fieldState.error]} />
@@ -455,12 +465,23 @@ export const GmailDialog = ({
                           <FieldLabel htmlFor={field.name}>
                             Start Date
                           </FieldLabel>
-                          <Input
-                            {...field}
+                          <DatePicker
                             id={field.name}
-                            type="date"
-                            aria-invalid={fieldState.invalid}
+                            date={
+                              field.value
+                                ? parse(field.value, "yyyy-MM-dd", new Date())
+                                : undefined
+                            }
+                            onDateChange={(date: Date | undefined): void =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : ""
+                              )
+                            }
+                            placeholder="Select start date"
                           />
+                          {fieldState.invalid && (
+                            <FieldError errors={[fieldState.error]} />
+                          )}
                         </Field>
                       )}
                     />
@@ -470,12 +491,23 @@ export const GmailDialog = ({
                       render={({ field, fieldState }) => (
                         <Field data-invalid={fieldState.invalid}>
                           <FieldLabel htmlFor={field.name}>End Date</FieldLabel>
-                          <Input
-                            {...field}
+                          <DatePicker
                             id={field.name}
-                            type="date"
-                            aria-invalid={fieldState.invalid}
+                            date={
+                              field.value
+                                ? parse(field.value, "yyyy-MM-dd", new Date())
+                                : undefined
+                            }
+                            onDateChange={(date: Date | undefined): void =>
+                              field.onChange(
+                                date ? format(date, "yyyy-MM-dd") : ""
+                              )
+                            }
+                            placeholder="Select end date"
                           />
+                          {fieldState.invalid && (
+                            <FieldError errors={[fieldState.error]} />
+                          )}
                         </Field>
                       )}
                     />
