@@ -75,7 +75,7 @@ interface ParsedEmail {
   };
   // Links to open the email
   gmailLink: string; // Opens in Gmail web/app
-  nativeMailLink?: string; // Opens via redirect page
+  appleMailLink?: string; // Opens via redirect page in Apple Mail app
 }
 
 function buildGmailQuery(
@@ -385,7 +385,7 @@ function parseEmailDetail(
   const gmailLink = `https://mail.google.com/mail/u/0/#all/${detail.id}`;
 
   // Build iOS/macOS Mail app links (if Message-ID available)
-  let nativeMailLink: string | undefined;
+  let appleMailLink: string | undefined;
   if (messageIdHeader) {
     // Message-ID format: <xxx@yyy.com> - need to URL encode it
     const encodedMessageId: string = encodeURIComponent(messageIdHeader);
@@ -393,7 +393,7 @@ function parseEmailDetail(
     // Build the redirect link
     const appUrl: string =
       process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    nativeMailLink = `${appUrl}/api/open-mail?id=${encodedMessageId}`;
+    appleMailLink = `${appUrl}/api/open-mail?id=${encodedMessageId}`;
   }
 
   const email: ParsedEmail = {
@@ -416,7 +416,7 @@ function parseEmailDetail(
           p.mimeType?.startsWith("image/")
       ) || false,
     gmailLink,
-    nativeMailLink,
+    appleMailLink,
   };
 
   if (includeBody && detail.payload) {
