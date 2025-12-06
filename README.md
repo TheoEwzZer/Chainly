@@ -143,17 +143,17 @@ pnpm run build
 pnpm run lint
 
 # Database commands
-pnpx prisma format          # Format schema file
-pnpx prisma generate        # Generate Prisma client
-pnpx prisma migrate dev     # Apply migrations in development
-pnpx prisma studio          # Open Prisma Studio GUI
+pnpx prisma format       # Format schema file
+pnpx prisma generate     # Generate Prisma client
+pnpx prisma migrate dev  # Apply migrations in development
+pnpx prisma studio       # Open Prisma Studio GUI
 ```
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages
+├── app/                   # Next.js App Router pages
 │   ├── (auth)/            # Auth pages (login, register)
 │   ├── (dashboard)/       # Protected dashboard pages
 │   └── api/               # API routes (auth, trpc, inngest)
@@ -174,12 +174,12 @@ src/
 │   └── utils.ts           # Topological sorting utilities
 ├── trpc/                  # tRPC setup and routers
 ├── components/            # Shared UI components
-│   ├── ui/               # Base UI primitives
-│   └── react-flow/       # React Flow custom components
+│   ├── ui/                # Base UI primitives
+│   └── react-flow/        # React Flow custom components
 └── lib/                   # Core utilities
-    ├── auth.ts           # better-auth configuration
-    ├── db.ts             # Prisma client singleton
-    └── encryption.ts     # Credential encryption
+    ├── auth.ts            # better-auth configuration
+    ├── db.ts              # Prisma client singleton
+    └── encryption.ts      # Credential encryption
 ```
 
 ## Architecture
