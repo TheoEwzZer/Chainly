@@ -8,7 +8,7 @@ import { googleCalendarChannel } from "@/inngest/channels/google-calendar";
 import { GoogleCalendarFormValues } from "./dialog";
 import { getValidAccessToken } from "@/lib/google-calendar-token";
 import ky from "ky";
-import { toZonedTime, format } from "date-fns-tz";
+import { toZonedTime, format, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -112,117 +112,70 @@ export const googleCalendarExecutor: NodeExecutor<
       targetDateStr = format(nowInTz, "yyyy-MM-dd", { timeZone: timezone });
     }
 
-    const timeMinStr = `${targetDateStr}T00:00:00`;
-    const timeMaxStr = `${targetDateStr}T23:59:59`;
+    const startOfDayUtc: Date = fromZonedTime(`${targetDateStr} 00:00:00`, timezone);
+    const endOfDayUtc: Date = fromZonedTime(`${targetDateStr} 23:59:59`, timezone);
+
+    const timeMinStr: string = formatInTimeZone(
+      startOfDayUtc,
+      timezone,
+      "yyyy-MM-dd'T'HH:mm:ssXXX"
+    );
+    const timeMaxStr: string = formatInTimeZone(
+      endOfDayUtc,
+      timezone,
+      "yyyy-MM-dd'T'HH:mm:ssXXX"
+    );
 
     const result: WorkflowContext = await step.run(
       `google-calendar-fetch-${nodeId}`,
       async () => {
-        try {
-          const response = await ky
-            .get(
-              `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-                renderedCalendarId
-              )}/events`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-                searchParams: {
-                  timeMin: timeMinStr,
-                  timeMax: timeMaxStr,
-                  timeZone: timezone,
-                  singleEvents: "true",
-                  orderBy: "startTime",
-                },
-                timeout: 30000,
-                retry: {
-                  limit: 2,
-                  methods: ["get"],
-                  statusCodes: [408, 413, 429, 500, 502, 503, 504],
-                },
-              }
-            )
-            .json<{
-              items: Array<{
-                id: string;
-                summary: string;
-                description?: string;
-                start: { date?: string; dateTime?: string; timeZone?: string };
-                end: { date?: string; dateTime?: string; timeZone?: string };
-                location?: string;
-                htmlLink?: string;
-              }>;
-            }>();
+        const response = await ky
+          .get(
+            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+              renderedCalendarId
+            )}/events`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+              searchParams: {
+                timeMin: timeMinStr,
+                timeMax: timeMaxStr,
+                timeZone: timezone,
+                singleEvents: "true",
+                orderBy: "startTime",
+              },
+              timeout: 30000,
+              retry: {
+                limit: 2,
+                methods: ["get"],
+                statusCodes: [408, 413, 429, 500, 502, 503, 504],
+              },
+            }
+          )
+          .json<{
+            items: Array<{
+              id: string;
+              summary: string;
+              description?: string;
+              start: { date?: string; dateTime?: string; timeZone?: string };
+              end: { date?: string; dateTime?: string; timeZone?: string };
+              location?: string;
+              htmlLink?: string;
+            }>;
+          }>();
 
-          const events = response.items || [];
+        const events = response.items || [];
 
-          return {
-            ...context,
-            [data.variableName]: {
-              events: events,
-              date: targetDateStr,
-              timezone: timezone,
-              count: events.length,
-            },
-          };
-        } catch (error: any) {
-          const statusCode: number | undefined = error.response?.status;
-
-          if (statusCode === 401) {
-            await step.run(`publish-error-401-${nodeId}`, async () => {
-              await publish(
-                googleCalendarChannel().status({
-                  nodeId,
-                  status: "error",
-                })
-              );
-            });
-            throw new NonRetriableError(
-              "Google Calendar Node: Invalid access token. Please verify your access token is correct and hasn't expired."
-            );
-          }
-          if (statusCode === 403) {
-            await step.run(`publish-error-403-${nodeId}`, async () => {
-              await publish(
-                googleCalendarChannel().status({
-                  nodeId,
-                  status: "error",
-                })
-              );
-            });
-            throw new NonRetriableError(
-              "Google Calendar Node: Access forbidden. Please verify the access token has the required permissions (calendar.readonly scope)."
-            );
-          }
-          if (statusCode === 404) {
-            await step.run(`publish-error-404-${nodeId}`, async () => {
-              await publish(
-                googleCalendarChannel().status({
-                  nodeId,
-                  status: "error",
-                })
-              );
-            });
-            throw new NonRetriableError(
-              `Google Calendar Node: Calendar not found. Please verify the calendar ID "${renderedCalendarId}" is correct.`
-            );
-          }
-
-          await step.run(`publish-error-fetch-${nodeId}`, async () => {
-            await publish(
-              googleCalendarChannel().status({
-                nodeId,
-                status: "error",
-              })
-            );
-          });
-          throw new NonRetriableError(
-            `Google Calendar Node: Failed to fetch events. ${
-              error.message || "Unknown error"
-            }`
-          );
-        }
+        return {
+          ...context,
+          [data.variableName]: {
+            events: events,
+            date: targetDateStr,
+            timezone: timezone,
+            count: events.length,
+          },
+        };
       }
     );
 
