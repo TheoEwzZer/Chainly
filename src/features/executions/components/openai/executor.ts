@@ -140,11 +140,6 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
       model: openai(data.model),
       system: renderedSystem,
       prompt: renderedUser,
-      experimental_telemetry: {
-        isEnabled: true,
-        recordInputs: true,
-        recordOutputs: true,
-      },
     });
 
     const textContent = steps
