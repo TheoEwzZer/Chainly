@@ -372,8 +372,6 @@ export const GmailDialog = ({
           {/* Main Configuration - Only show when credentials exist */}
           {credentials && credentials.length > 0 && (
             <>
-              <Separator />
-
               {/* Date Filter Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -515,8 +513,6 @@ export const GmailDialog = ({
                 )}
               </div>
 
-              <Separator />
-
               {/* Mailbox Filter */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -552,8 +548,6 @@ export const GmailDialog = ({
                   )}
                 />
               </div>
-
-              <Separator />
 
               {/* Read Status */}
               <div className="space-y-4">
