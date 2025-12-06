@@ -5,7 +5,6 @@ import { encrypt } from "@/lib/encryption";
 import { CredentialType } from "@/generated/prisma/enums";
 import type { Credential } from "@/generated/prisma/client";
 import { verifySignedState } from "@/lib/webhook-security";
-import * as Sentry from "@sentry/nextjs";
 
 interface OAuthState {
   userId: string;
@@ -144,9 +143,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       )
     );
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: "google-oauth-callback" },
-    });
+    console.error("Google OAuth callback error:", error);
     return NextResponse.redirect(
       new URL(
         `/credentials?error=${encodeURIComponent(

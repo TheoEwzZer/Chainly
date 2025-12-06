@@ -3,7 +3,6 @@ import { getGoogleOAuth2AuthUrl } from "@/lib/google-oauth";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createSignedState } from "@/lib/webhook-security";
-import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -28,9 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ authUrl });
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: "google-oauth" },
-    });
+    console.error("Google OAuth error:", error);
     return NextResponse.json(
       { error: "Failed to generate OAuth URL" },
       { status: 500 }

@@ -6,7 +6,6 @@ import { NextURL } from "next/dist/server/web/next-url";
 import type { Node } from "@/generated/prisma/client";
 import { verifyWebhookSecret } from "@/lib/webhook-security";
 import { checkRateLimit, rateLimitResponse, RateLimitResult } from "@/lib/rate-limit";
-import * as Sentry from "@sentry/nextjs";
 
 const buildHeadersRecord = (request: NextRequest): Record<string, string> => {
   const record: Record<string, string> = {};
@@ -122,9 +121,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    Sentry.captureException(error, {
-      tags: { component: "webhook-trigger" },
-    });
+    console.error("Webhook trigger error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to enqueue workflow execution" },
       { status: 500 }
