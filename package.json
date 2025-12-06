@@ -1,6 +1,6 @@
 {
-  "name": "chanly2",
-  "version": "0.1.0",
+  "name": "chanly",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.24.0",
   "scripts": {
