@@ -121,6 +121,18 @@ function buildGmailQuery(
       parts.push(`after:${monthAgoStr}`);
       break;
     }
+    case "older_than": {
+      if (data.relativeDateValue && data.relativeDateUnit) {
+        parts.push(`older_than:${data.relativeDateValue}${data.relativeDateUnit}`);
+      }
+      break;
+    }
+    case "newer_than": {
+      if (data.relativeDateValue && data.relativeDateUnit) {
+        parts.push(`newer_than:${data.relativeDateValue}${data.relativeDateUnit}`);
+      }
+      break;
+    }
     case "specific_date": {
       if (data.specificDate) {
         const dateStr = data.specificDate.replaceAll("-", "/");
@@ -159,22 +171,71 @@ function buildGmailQuery(
     parts.push("is:read");
   }
 
-  // Starred/Important
+  // Status filters
   if (data.starred) {
     parts.push("is:starred");
   }
   if (data.important) {
     parts.push("is:important");
   }
-
-  // Mailbox
-  if (data.mailbox !== "all") {
-    parts.push(`in:${data.mailbox}`);
+  if (data.isMuted) {
+    parts.push("is:muted");
+  }
+  if (data.isSnoozed) {
+    parts.push("in:snoozed");
   }
 
-  // Has attachment
+  // Mailbox / Location
+  if (data.mailbox && data.mailbox !== "all") {
+    if (data.mailbox === "anywhere") {
+      parts.push("in:anywhere");
+    } else if (data.mailbox === "archive") {
+      parts.push("in:archive");
+    } else if (data.mailbox === "snoozed") {
+      parts.push("in:snoozed");
+    } else {
+      parts.push(`in:${data.mailbox}`);
+    }
+  }
+
+  // Category filter
+  if (data.category && data.category !== "all") {
+    parts.push(`category:${data.category}`);
+  }
+
+  // Has content filters
   if (data.hasAttachment) {
     parts.push("has:attachment");
+  }
+  if (data.hasYoutube) {
+    parts.push("has:youtube");
+  }
+  if (data.hasDrive) {
+    parts.push("has:drive");
+  }
+  if (data.hasDocument) {
+    parts.push("has:document");
+  }
+  if (data.hasSpreadsheet) {
+    parts.push("has:spreadsheet");
+  }
+  if (data.hasPresentation) {
+    parts.push("has:presentation");
+  }
+
+  // Filename filter
+  if (data.filename) {
+    const filenameTemplate = transformBracketNotation(data.filename);
+    const renderedFilename = Handlebars.compile(filenameTemplate)(context);
+    if (renderedFilename) {
+      parts.push(`filename:${renderedFilename}`);
+    }
+  }
+
+  // Size filter
+  if (data.sizeFilter && data.sizeFilter !== "all" && data.sizeValue && data.sizeUnit) {
+    const sizeOperator = data.sizeFilter === "larger" ? "larger" : "smaller";
+    parts.push(`${sizeOperator}:${data.sizeValue}${data.sizeUnit}`);
   }
 
   // Advanced filters with template support
@@ -194,6 +255,14 @@ function buildGmailQuery(
     }
   }
 
+  if (data.cc) {
+    const ccTemplate = transformBracketNotation(data.cc);
+    const renderedCc = Handlebars.compile(ccTemplate)(context);
+    if (renderedCc) {
+      parts.push(`cc:${renderedCc}`);
+    }
+  }
+
   if (data.subject) {
     const subjectTemplate = transformBracketNotation(data.subject);
     const renderedSubject = Handlebars.compile(subjectTemplate)(context);
@@ -207,6 +276,14 @@ function buildGmailQuery(
     const renderedLabel = Handlebars.compile(labelTemplate)(context);
     if (renderedLabel) {
       parts.push(`label:${renderedLabel}`);
+    }
+  }
+
+  if (data.list) {
+    const listTemplate = transformBracketNotation(data.list);
+    const renderedList = Handlebars.compile(listTemplate)(context);
+    if (renderedList) {
+      parts.push(`list:${renderedList}`);
     }
   }
 

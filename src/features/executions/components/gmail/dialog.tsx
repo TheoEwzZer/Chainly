@@ -70,26 +70,53 @@ const formSchema = z.object({
     "this_month",
     "specific_date",
     "date_range",
+    "older_than",
+    "newer_than",
     "all",
   ]),
   specificDate: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  // Relative date (older_than / newer_than)
+  relativeDateValue: z.number().optional(),
+  relativeDateUnit: z.enum(["d", "m", "y"]).optional(),
 
   // Status filters
   readStatus: z.enum(["all", "unread", "read"]),
   starred: z.boolean(),
   important: z.boolean(),
+  isMuted: z.boolean(),
+  isSnoozed: z.boolean(),
 
   // Location filters
-  mailbox: z.enum(["inbox", "sent", "drafts", "all"]),
+  mailbox: z.enum(["inbox", "sent", "drafts", "archive", "snoozed", "anywhere", "all"]),
 
-  // Advanced filters
+  // Category filter (Gmail categories)
+  category: z.enum(["all", "primary", "social", "promotions", "updates", "forums"]),
+
+  // Advanced filters - Recipients
   from: z.string().optional(),
   to: z.string().optional(),
+  cc: z.string().optional(),
   subject: z.string().optional(),
-  hasAttachment: z.boolean(),
   label: z.string().optional(),
+  list: z.string().optional(), // Mailing list
+
+  // Has content filters
+  hasAttachment: z.boolean(),
+  hasYoutube: z.boolean(),
+  hasDrive: z.boolean(),
+  hasDocument: z.boolean(),
+  hasSpreadsheet: z.boolean(),
+  hasPresentation: z.boolean(),
+
+  // Filename filter
+  filename: z.string().optional(),
+
+  // Size filter
+  sizeFilter: z.enum(["all", "larger", "smaller"]),
+  sizeValue: z.number().optional(),
+  sizeUnit: z.enum(["B", "K", "M"]).optional(),
 
   // Options
   maxResults: z.number().min(1).max(500),
@@ -130,15 +157,31 @@ export const GmailDialog = ({
       specificDate: defaultValues.specificDate || "",
       startDate: defaultValues.startDate || "",
       endDate: defaultValues.endDate || "",
+      relativeDateValue: defaultValues.relativeDateValue || 1,
+      relativeDateUnit: defaultValues.relativeDateUnit || "d",
       readStatus: defaultValues.readStatus || "all",
       starred: defaultValues.starred || false,
       important: defaultValues.important || false,
+      isMuted: defaultValues.isMuted || false,
+      isSnoozed: defaultValues.isSnoozed || false,
       mailbox: defaultValues.mailbox || "inbox",
+      category: defaultValues.category || "all",
       from: defaultValues.from || "",
       to: defaultValues.to || "",
+      cc: defaultValues.cc || "",
       subject: defaultValues.subject || "",
-      hasAttachment: defaultValues.hasAttachment || false,
       label: defaultValues.label || "",
+      list: defaultValues.list || "",
+      hasAttachment: defaultValues.hasAttachment || false,
+      hasYoutube: defaultValues.hasYoutube || false,
+      hasDrive: defaultValues.hasDrive || false,
+      hasDocument: defaultValues.hasDocument || false,
+      hasSpreadsheet: defaultValues.hasSpreadsheet || false,
+      hasPresentation: defaultValues.hasPresentation || false,
+      filename: defaultValues.filename || "",
+      sizeFilter: defaultValues.sizeFilter || "all",
+      sizeValue: defaultValues.sizeValue || 1,
+      sizeUnit: defaultValues.sizeUnit || "M",
       maxResults: defaultValues.maxResults || 50,
       includeSpamTrash: defaultValues.includeSpamTrash || false,
       fetchBody: defaultValues.fetchBody || "metadata",
@@ -154,15 +197,31 @@ export const GmailDialog = ({
         specificDate: defaultValues.specificDate || "",
         startDate: defaultValues.startDate || "",
         endDate: defaultValues.endDate || "",
+        relativeDateValue: defaultValues.relativeDateValue || 1,
+        relativeDateUnit: defaultValues.relativeDateUnit || "d",
         readStatus: defaultValues.readStatus || "all",
         starred: defaultValues.starred || false,
         important: defaultValues.important || false,
+        isMuted: defaultValues.isMuted || false,
+        isSnoozed: defaultValues.isSnoozed || false,
         mailbox: defaultValues.mailbox || "inbox",
+        category: defaultValues.category || "all",
         from: defaultValues.from || "",
         to: defaultValues.to || "",
+        cc: defaultValues.cc || "",
         subject: defaultValues.subject || "",
-        hasAttachment: defaultValues.hasAttachment || false,
         label: defaultValues.label || "",
+        list: defaultValues.list || "",
+        hasAttachment: defaultValues.hasAttachment || false,
+        hasYoutube: defaultValues.hasYoutube || false,
+        hasDrive: defaultValues.hasDrive || false,
+        hasDocument: defaultValues.hasDocument || false,
+        hasSpreadsheet: defaultValues.hasSpreadsheet || false,
+        hasPresentation: defaultValues.hasPresentation || false,
+        filename: defaultValues.filename || "",
+        sizeFilter: defaultValues.sizeFilter || "all",
+        sizeValue: defaultValues.sizeValue || 1,
+        sizeUnit: defaultValues.sizeUnit || "M",
         maxResults: defaultValues.maxResults || 50,
         includeSpamTrash: defaultValues.includeSpamTrash || false,
         fetchBody: defaultValues.fetchBody || "metadata",
@@ -403,6 +462,14 @@ export const GmailDialog = ({
                         <Label htmlFor="date-month">This Month</Label>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="older_than" id="date-older" />
+                        <Label htmlFor="date-older">Older Than</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="newer_than" id="date-newer" />
+                        <Label htmlFor="date-newer">Newer Than</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
                         <RadioGroupItem
                           value="specific_date"
                           id="date-specific"
@@ -510,6 +577,48 @@ export const GmailDialog = ({
                     />
                   </div>
                 )}
+
+                {/* Relative Date Inputs (older_than / newer_than) */}
+                {(watchDateFilter === "older_than" ||
+                  watchDateFilter === "newer_than") && (
+                  <div className="flex items-center gap-2">
+                    <Controller
+                      name="relativeDateValue"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          type="number"
+                          min={1}
+                          className="w-20"
+                          onChange={(e) =>
+                            field.onChange(Number.parseInt(e.target.value) || 1)
+                          }
+                        />
+                      )}
+                    />
+                    <Controller
+                      name="relativeDateUnit"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="d">Days</SelectItem>
+                            <SelectItem value="m">Months</SelectItem>
+                            <SelectItem value="y">Years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <span className="text-sm text-muted-foreground">ago</span>
+                  </div>
+                )}
               </div>
 
               {/* Mailbox Filter */}
@@ -540,8 +649,61 @@ export const GmailDialog = ({
                         <Label htmlFor="mailbox-drafts">Drafts</Label>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="archive" id="mailbox-archive" />
+                        <Label htmlFor="mailbox-archive">Archive</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="snoozed" id="mailbox-snoozed" />
+                        <Label htmlFor="mailbox-snoozed">Snoozed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="anywhere" id="mailbox-anywhere" />
+                        <Label htmlFor="mailbox-anywhere">Anywhere</Label>
+                      </div>
+                      <div className="flex items-center space-x-2 col-span-2">
                         <RadioGroupItem value="all" id="mailbox-all" />
                         <Label htmlFor="mailbox-all">All Mail</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Category</h4>
+                <Controller
+                  name="category"
+                  control={form.control}
+                  render={({ field }) => (
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      className="grid grid-cols-3 gap-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="all" id="cat-all" />
+                        <Label htmlFor="cat-all">All</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="primary" id="cat-primary" />
+                        <Label htmlFor="cat-primary">Primary</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="social" id="cat-social" />
+                        <Label htmlFor="cat-social">Social</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="promotions" id="cat-promo" />
+                        <Label htmlFor="cat-promo">Promotions</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="updates" id="cat-updates" />
+                        <Label htmlFor="cat-updates">Updates</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="forums" id="cat-forums" />
+                        <Label htmlFor="cat-forums">Forums</Label>
                       </div>
                     </RadioGroup>
                   )}
@@ -588,7 +750,7 @@ export const GmailDialog = ({
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
-                        <Label htmlFor="starred">Starred only</Label>
+                        <Label htmlFor="starred">Starred</Label>
                       </div>
                     )}
                   />
@@ -602,10 +764,43 @@ export const GmailDialog = ({
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
-                        <Label htmlFor="important">Important only</Label>
+                        <Label htmlFor="important">Important</Label>
                       </div>
                     )}
                   />
+                  <Controller
+                    name="isMuted"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="isMuted"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="isMuted">Muted</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="isSnoozed"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="isSnoozed"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="isSnoozed">Snoozed</Label>
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Has Content Filters */}
+                <h4 className="font-medium mt-4">Content Type</h4>
+                <div className="flex flex-wrap gap-4">
                   <Controller
                     name="hasAttachment"
                     control={form.control}
@@ -616,7 +811,77 @@ export const GmailDialog = ({
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
-                        <Label htmlFor="hasAttachment">Has attachment</Label>
+                        <Label htmlFor="hasAttachment">Attachment</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="hasYoutube"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasYoutube"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="hasYoutube">YouTube</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="hasDrive"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasDrive"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="hasDrive">Drive</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="hasDocument"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasDocument"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="hasDocument">Docs</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="hasSpreadsheet"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasSpreadsheet"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="hasSpreadsheet">Sheets</Label>
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name="hasPresentation"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasPresentation"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor="hasPresentation">Slides</Label>
                       </div>
                     )}
                   />
@@ -633,42 +898,55 @@ export const GmailDialog = ({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4">
-                    <Controller
-                      name="from"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Field>
-                          <FieldLabel htmlFor={field.name}>From</FieldLabel>
-                          <FieldDescription>
-                            Filter by sender email. Supports {"{{variables}}"}
-                          </FieldDescription>
-                          <Input
-                            {...field}
-                            id={field.name}
-                            placeholder="sender@example.com"
-                            className="font-mono"
-                          />
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      name="to"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Field>
-                          <FieldLabel htmlFor={field.name}>To</FieldLabel>
-                          <FieldDescription>
-                            Filter by recipient email. Supports {"{{variables}}"}
-                          </FieldDescription>
-                          <Input
-                            {...field}
-                            id={field.name}
-                            placeholder="recipient@example.com"
-                            className="font-mono"
-                          />
-                        </Field>
-                      )}
-                    />
+                    {/* Recipients Section */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <Controller
+                        name="from"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>From</FieldLabel>
+                            <Input
+                              {...field}
+                              id={field.name}
+                              placeholder="sender@example.com"
+                              className="font-mono"
+                            />
+                          </Field>
+                        )}
+                      />
+                      <Controller
+                        name="to"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>To</FieldLabel>
+                            <Input
+                              {...field}
+                              id={field.name}
+                              placeholder="recipient@example.com"
+                              className="font-mono"
+                            />
+                          </Field>
+                        )}
+                      />
+                      <Controller
+                        name="cc"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>CC</FieldLabel>
+                            <Input
+                              {...field}
+                              id={field.name}
+                              placeholder="cc@example.com"
+                              className="font-mono"
+                            />
+                          </Field>
+                        )}
+                      />
+                    </div>
+
                     <Controller
                       name="subject"
                       control={form.control}
@@ -677,9 +955,6 @@ export const GmailDialog = ({
                           <FieldLabel htmlFor={field.name}>
                             Subject Contains
                           </FieldLabel>
-                          <FieldDescription>
-                            Filter emails where subject contains these words
-                          </FieldDescription>
                           <Input
                             {...field}
                             id={field.name}
@@ -688,23 +963,129 @@ export const GmailDialog = ({
                         </Field>
                       )}
                     />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Controller
+                        name="label"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>Label</FieldLabel>
+                            <Input
+                              {...field}
+                              id={field.name}
+                              placeholder="work"
+                            />
+                          </Field>
+                        )}
+                      />
+                      <Controller
+                        name="list"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Field>
+                            <FieldLabel htmlFor={field.name}>
+                              Mailing List
+                            </FieldLabel>
+                            <Input
+                              {...field}
+                              id={field.name}
+                              placeholder="info@example.com"
+                              className="font-mono"
+                            />
+                          </Field>
+                        )}
+                      />
+                    </div>
+
                     <Controller
-                      name="label"
+                      name="filename"
                       control={form.control}
                       render={({ field }) => (
                         <Field>
-                          <FieldLabel htmlFor={field.name}>Label</FieldLabel>
+                          <FieldLabel htmlFor={field.name}>
+                            Attachment Filename
+                          </FieldLabel>
                           <FieldDescription>
-                            Filter by Gmail label name
+                            Search by filename or extension (e.g., pdf,
+                            report.xlsx)
                           </FieldDescription>
                           <Input
                             {...field}
                             id={field.name}
-                            placeholder="work"
+                            placeholder="pdf or invoice.pdf"
                           />
                         </Field>
                       )}
                     />
+
+                    {/* Size Filter */}
+                    <Field>
+                      <FieldLabel>Email Size</FieldLabel>
+                      <div className="flex items-center gap-2">
+                        <Controller
+                          name="sizeFilter"
+                          control={form.control}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Any size</SelectItem>
+                                <SelectItem value="larger">
+                                  Larger than
+                                </SelectItem>
+                                <SelectItem value="smaller">
+                                  Smaller than
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {form.watch("sizeFilter") !== "all" && (
+                          <>
+                            <Controller
+                              name="sizeValue"
+                              control={form.control}
+                              render={({ field }) => (
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  min={1}
+                                  className="w-20"
+                                  onChange={(e) =>
+                                    field.onChange(Number.parseInt(e.target.value) || 1)
+                                  }
+                                />
+                              )}
+                            />
+                            <Controller
+                              name="sizeUnit"
+                              control={form.control}
+                              render={({ field }) => (
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger className="w-20">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="B">B</SelectItem>
+                                    <SelectItem value="K">KB</SelectItem>
+                                    <SelectItem value="M">MB</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </Field>
                   </AccordionContent>
                 </AccordionItem>
 
