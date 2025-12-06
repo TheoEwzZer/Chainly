@@ -16,6 +16,7 @@ import { GmailNode } from "@/features/executions/components/gmail/node";
 import { HumanApprovalNode } from "@/features/executions/components/human-approval/node";
 import { LoopNode } from "@/features/executions/components/loop/node";
 import { ConditionalNode } from "@/features/executions/components/conditional/node";
+import { SwitchNode } from "@/features/executions/components/switch/node";
 import { EmailNode } from "@/features/executions/components/email/node";
 
 export const nodeComponents = {
@@ -35,6 +36,7 @@ export const nodeComponents = {
   [NodeType.HUMAN_APPROVAL]: HumanApprovalNode,
   [NodeType.LOOP]: LoopNode,
   [NodeType.CONDITIONAL]: ConditionalNode,
+  [NodeType.SWITCH]: SwitchNode,
   [NodeType.EMAIL]: EmailNode,
 } as const satisfies NodeTypes;
 

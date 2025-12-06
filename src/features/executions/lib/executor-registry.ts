@@ -19,6 +19,7 @@ import { gmailExecutor } from "../components/gmail/executor";
 import { humanApprovalExecutor } from "../components/human-approval/executor";
 import { loopExecutor } from "../components/loop/executor";
 import { conditionalExecutor } from "../components/conditional/executor";
+import { switchExecutor } from "../components/switch/executor";
 import { emailExecutor } from "../components/email/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
@@ -44,6 +45,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.HUMAN_APPROVAL]: humanApprovalExecutor,
   [NodeType.LOOP]: loopExecutor,
   [NodeType.CONDITIONAL]: conditionalExecutor,
+  [NodeType.SWITCH]: switchExecutor,
   [NodeType.EMAIL]: emailExecutor,
 } as const;
 

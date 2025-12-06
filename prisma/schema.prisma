@@ -130,6 +130,7 @@ enum NodeType {
   HUMAN_APPROVAL
   LOOP
   CONDITIONAL
+  SWITCH
   EMAIL
 }
 

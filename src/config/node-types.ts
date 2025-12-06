@@ -1,5 +1,6 @@
 import { NodeType } from "@/generated/prisma/enums";
 import {
+  ArrowLeftRight,
   Check,
   ClockIcon,
   GlobeIcon,
@@ -120,6 +121,13 @@ export const executionNodes: NodeTypeOption[] = [
     description:
       "Evaluate a condition and route the workflow to different paths based on the result.",
     icon: GitBranch,
+  },
+  {
+    type: NodeType.SWITCH,
+    label: "Switch",
+    description:
+      "Evaluate an expression and route the workflow to one of multiple paths based on matching case values.",
+    icon: ArrowLeftRight,
   },
   {
     type: NodeType.EMAIL,

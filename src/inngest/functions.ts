@@ -32,6 +32,7 @@ import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { humanApprovalChannel } from "./channels/human-approval";
 import { loopChannel } from "./channels/loop";
 import { conditionalChannel } from "./channels/conditional";
+import { switchChannel } from "./channels/switch";
 import { emailChannel } from "./channels/email";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
 import { NodeType } from "@/generated/prisma/enums";
@@ -68,6 +69,8 @@ const getChannelForNodeType = (nodeType: NodeType) => {
       return loopChannel();
     case NodeType.CONDITIONAL:
       return conditionalChannel();
+    case NodeType.SWITCH:
+      return switchChannel();
     case NodeType.EMAIL:
       return emailChannel();
     case NodeType.INITIAL:
@@ -110,6 +113,7 @@ export const executeWorkflow = inngest.createFunction(
       humanApprovalChannel(),
       loopChannel(),
       conditionalChannel(),
+      switchChannel(),
       emailChannel(),
     ],
   },
@@ -227,11 +231,16 @@ export const executeWorkflow = inngest.createFunction(
 
     let context: WorkflowContext = eventData.initialData || {};
     const failedNodeIds: Set<string> = new Set();
+    const skippedBranchNodeIds: Set<string> = new Set();
     const executedInLoopNodeIds: Set<string> = new Set();
     let hasAnyNodeFailed: boolean = false;
     const conditionalResults = new Map<
       string,
       { result: boolean; variableName: string }
+    >();
+    const switchResults = new Map<
+      string,
+      { selectedOutput: string | null; variableName: string }
     >();
 
     let startIndex: number = 0;
@@ -285,14 +294,14 @@ export const executeWorkflow = inngest.createFunction(
         }
 
         let hasValidConnection: boolean = false;
-        let hasConditionalConnection: boolean = false;
+        let hasBranchingConnection: boolean = false;
 
         for (const connection of incomingConnections) {
           const conditionalResult:
             | { result: boolean; variableName: string }
             | undefined = conditionalResults.get(connection.fromNodeId);
           if (conditionalResult) {
-            hasConditionalConnection = true;
+            hasBranchingConnection = true;
             const expectedOutput: "true" | "false" = conditionalResult.result
               ? "true"
               : "false";
@@ -300,43 +309,41 @@ export const executeWorkflow = inngest.createFunction(
               hasValidConnection = true;
               break;
             }
-          } else {
-            hasValidConnection = true;
-            break;
+            continue;
           }
+
+          const switchResult:
+            | { selectedOutput: string | null; variableName: string }
+            | undefined = switchResults.get(connection.fromNodeId);
+          if (switchResult) {
+            hasBranchingConnection = true;
+            if (connection.fromOutput === switchResult.selectedOutput) {
+              hasValidConnection = true;
+              break;
+            }
+            continue;
+          }
+
+          hasValidConnection = true;
+          break;
         }
 
-        return hasConditionalConnection && !hasValidConnection;
+        return hasBranchingConnection && !hasValidConnection;
       })();
 
       if (shouldSkipConditional) {
-        await prisma.executionStep.upsert({
-          where: {
-            executionId_order: {
-              executionId: executionRecord.id,
-              order,
-            },
-          },
-          create: {
-            executionId: executionRecord.id,
-            nodeId: node.id,
-            nodeType: node.type,
-            order,
-            status: ExecutionStatus.SUCCESS,
-            input: currentContext as Prisma.InputJsonValue,
-            output: currentContext as Prisma.InputJsonValue,
-            completedAt: new Date(),
-          },
-          update: {
-            nodeId: node.id,
-            nodeType: node.type,
-            status: ExecutionStatus.SUCCESS,
-            input: currentContext as Prisma.InputJsonValue,
-            output: currentContext as Prisma.InputJsonValue,
-            completedAt: new Date(),
-            startedAt: new Date(),
-          },
-        });
+        skippedBranchNodeIds.add(node.id);
+        continue;
+      }
+
+      const shouldSkipDueToBranch: boolean = hasFailedPredecessor(
+        node.id,
+        connections as unknown as Connection[],
+        skippedBranchNodeIds
+      );
+
+      if (shouldSkipDueToBranch) {
+        skippedBranchNodeIds.add(node.id);
         continue;
       }
 
@@ -443,6 +450,25 @@ export const executeWorkflow = inngest.createFunction(
             conditionalResults.set(node.id, {
               result: resultValue,
               variableName: conditionalData.variableName,
+            });
+          }
+        }
+
+        if (node.type === NodeType.SWITCH) {
+          const switchData = node.data as {
+            variableName?: string;
+          };
+          if (switchData?.variableName) {
+            const switchResult = result[switchData.variableName] as {
+              selectedOutput?: string | null;
+            };
+            const selectedOutput: string | null =
+              switchResult?.selectedOutput === undefined
+                ? "default"
+                : switchResult.selectedOutput;
+            switchResults.set(node.id, {
+              selectedOutput,
+              variableName: switchData.variableName,
             });
           }
         }
