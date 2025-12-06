@@ -73,6 +73,9 @@ interface ParsedEmail {
     plain?: string;
     html?: string;
   };
+  // Links to open the email
+  gmailLink: string; // Opens in Gmail web/app
+  nativeMailLink?: string; // Opens via redirect page
 }
 
 function buildGmailQuery(
@@ -372,9 +375,26 @@ function parseEmailDetail(
   detail: GmailMessageDetail,
   includeBody: boolean
 ): ParsedEmail {
-  const headers = detail.payload?.headers || [];
-  const toHeader = getHeader(headers, "To");
-  const labelIds = detail.labelIds || [];
+  const headers: { name: string; value: string }[] =
+    detail.payload?.headers || [];
+  const toHeader: string = getHeader(headers, "To");
+  const messageIdHeader: string = getHeader(headers, "Message-ID");
+  const labelIds: string[] = detail.labelIds || [];
+
+  // Build Gmail web/app link
+  const gmailLink = `https://mail.google.com/mail/u/0/#all/${detail.id}`;
+
+  // Build iOS/macOS Mail app links (if Message-ID available)
+  let nativeMailLink: string | undefined;
+  if (messageIdHeader) {
+    // Message-ID format: <xxx@yyy.com> - need to URL encode it
+    const encodedMessageId: string = encodeURIComponent(messageIdHeader);
+
+    // Build the redirect link
+    const appUrl: string =
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    nativeMailLink = `${appUrl}/api/open-mail?id=${encodedMessageId}`;
+  }
 
   const email: ParsedEmail = {
     id: detail.id,
@@ -395,6 +415,8 @@ function parseEmailDetail(
           p.mimeType?.startsWith("application/") ||
           p.mimeType?.startsWith("image/")
       ) || false,
+    gmailLink,
+    nativeMailLink,
   };
 
   if (includeBody && detail.payload) {
@@ -525,7 +547,13 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
               url.searchParams.set("format", format);
 
               if (format === "metadata") {
-                for (const header of ["From", "To", "Subject", "Date"]) {
+                for (const header of [
+                  "From",
+                  "To",
+                  "Subject",
+                  "Date",
+                  "Message-ID",
+                ]) {
                   url.searchParams.append("metadataHeaders", header);
                 }
               }
