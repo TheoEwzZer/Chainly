@@ -50,8 +50,8 @@ export const GmailNode = memo(
 
       const parts: string[] = [];
 
-      if (nodeData.mailbox && nodeData.mailbox !== "all") {
-        parts.push(nodeData.mailbox);
+      if (nodeData.mailboxes && nodeData.mailboxes.length > 0) {
+        parts.push(nodeData.mailboxes.join(", "));
       }
 
       if (nodeData.dateFilter) {
