@@ -7,9 +7,10 @@ This guide explains how to add new nodes to Chainly, a workflow automation platf
 1. [System Architecture](#system-architecture)
 2. [Node Overview](#node-overview)
 3. [Step-by-Step Guide](#step-by-step-guide)
-4. [Reference Examples](#reference-examples)
-5. [Best Practices](#best-practices)
-6. [Troubleshooting](#troubleshooting)
+4. [Advanced Patterns](#advanced-patterns)
+5. [Reference Examples](#reference-examples)
+6. [Best Practices](#best-practices)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -46,13 +47,29 @@ This guide explains how to add new nodes to Chainly, a workflow automation platf
 
 A complete node requires the following files:
 
+**For Execution Nodes:**
+
 ```
 src/features/executions/components/{node-name}/
 ├── node.tsx           # React Flow UI component
 ├── dialog.tsx         # Configuration dialog
 ├── executor.ts        # Backend execution logic
 └── actions.ts         # Server actions for realtime tokens
+```
 
+**For Trigger Nodes:**
+
+```
+src/features/triggers/components/{node-name}/
+├── node.tsx           # React Flow UI component
+├── dialog.tsx         # Configuration dialog
+├── executor.ts        # Backend execution logic
+└── actions.ts         # Server actions for realtime tokens
+```
+
+**Shared Files:**
+
+```
 src/inngest/channels/
 └── {node-name}.ts     # Realtime communication channel
 
@@ -73,15 +90,26 @@ src/config/
 
 There are two main categories:
 
-1. **Trigger Nodes**: Start workflow execution
+1. **Trigger Nodes**: Start workflow execution (located in `src/features/triggers/`)
 
-   - `MANUAL_TRIGGER`: Manual trigger
-   - `GOOGLE_FORM_TRIGGER`: Google Forms trigger
+   - `MANUAL_TRIGGER`: Manual trigger button
+   - `GOOGLE_FORM_TRIGGER`: Google Forms submission
+   - `WEBHOOK_TRIGGER`: Incoming HTTP webhooks
+   - `GITHUB_TRIGGER`: GitHub events (push, PR, issues)
+   - `SCHEDULE_TRIGGER`: Cron/scheduled execution
 
-2. **Execution Nodes**: Execute actions in the workflow
-   - `HTTP_REQUEST`: HTTP requests
+2. **Execution Nodes**: Execute actions in the workflow (located in `src/features/executions/`)
+
+   - `HTTP_REQUEST`: HTTP API calls
    - `OPENAI`, `GEMINI`, `ANTHROPIC`: AI text generation
    - `DISCORD`: Send Discord messages
+   - `GOOGLE_CALENDAR`: Fetch calendar events
+   - `GMAIL`: Fetch and filter emails
+   - `EMAIL`: Send emails via Resend
+   - `HUMAN_APPROVAL`: Pause for human approval
+   - `LOOP`: Iterate over arrays
+   - `CONDITIONAL`: If/else branching
+   - `SWITCH`: Multi-way branching
 
 ### Node Lifecycle
 
@@ -105,10 +133,20 @@ enum NodeType {
   MANUAL_TRIGGER
   HTTP_REQUEST
   GOOGLE_FORM_TRIGGER
+  WEBHOOK_TRIGGER
+  GITHUB_TRIGGER
+  SCHEDULE_TRIGGER
   ANTHROPIC
   GEMINI
   OPENAI
   DISCORD
+  GOOGLE_CALENDAR
+  GMAIL
+  HUMAN_APPROVAL
+  LOOP
+  CONDITIONAL
+  SWITCH
+  EMAIL
   YOUR_NEW_NODE  // ← Add your type here
 }
 ```
@@ -120,6 +158,10 @@ enum CredentialType {
   OPENAI
   ANTHROPIC
   GEMINI
+  DISCORD
+  GOOGLE_CALENDAR
+  GMAIL
+  RESEND
   YOUR_CREDENTIAL_TYPE  // ← Add your type here
 }
 ```
@@ -127,9 +169,9 @@ enum CredentialType {
 **Commands to run after modification:**
 
 ```bash
-npx prisma format
-npx prisma generate
-npx prisma migrate dev --name add_your_node_type
+pnpx prisma format
+pnpx prisma generate
+pnpx prisma migrate dev --name add_your_node_type
 ```
 
 ---
@@ -157,6 +199,30 @@ export const yourNodeChannel = channel("your-node-execution").addTopic(
 - Channel name must be unique: `"your-node-execution"`
 - Topic `"status"` is standard for all nodes
 - `NodeStatus` can be: `"loading"`, `"success"`, `"error"`, or `"initial"`
+
+**Advanced: Multi-Topic Channels**
+
+Some nodes need additional topics. For example, the Loop node has an `iteration` topic:
+
+```typescript
+import { NodeStatus } from "@/components/react-flow/node-status-indicator";
+import { channel, topic } from "@inngest/realtime";
+
+export const loopChannel = channel("loop-execution")
+  .addTopic(
+    topic("status").type<{
+      nodeId: string;
+      status: NodeStatus;
+    }>()
+  )
+  .addTopic(
+    topic("iteration").type<{
+      nodeId: string;
+      current: number;
+      total: number;
+    }>()
+  );
+```
 
 ---
 
@@ -773,17 +839,151 @@ const credentialTypeOptions = [
 **File: `src/features/credentials/components/credentials.tsx`**
 
 ```typescript
-export enum CredentialType {
-  OPENAI = "OPENAI",
-  ANTHROPIC = "ANTHROPIC",
-  GEMINI = "GEMINI",
-  YOUR_CREDENTIAL_TYPE = "YOUR_CREDENTIAL_TYPE", // Add here
-}
-
 const credentialLogos: Record<CredentialType, string> = {
   // ... existing logos
   [CredentialType.YOUR_CREDENTIAL_TYPE]: "/logos/your-service.svg",
 };
+```
+
+---
+
+## Advanced Patterns
+
+### Control Flow Nodes
+
+Control flow nodes (Conditional, Switch, Loop) use special patterns.
+
+#### Using JEXL Expressions
+
+For condition evaluation, use [JEXL](https://github.com/TomFrost/jexl) instead of Handlebars:
+
+```typescript
+import jexl from "jexl";
+
+// Convert Handlebars-style syntax to JEXL
+const convertToJexlSyntax = (condition: string): string => {
+  return condition.replaceAll(/\{\{([^}]+)\}\}/g, "$1").trim();
+};
+
+// Evaluate condition
+const evaluateCondition = (
+  condition: string,
+  context: WorkflowContext
+): boolean => {
+  try {
+    const jexlExpression: string = convertToJexlSyntax(condition);
+    const result: any = jexl.evalSync(jexlExpression, context);
+    return Boolean(result);
+  } catch (error) {
+    throw new NonRetriableError(
+      `Conditional Node: Failed to evaluate condition "${condition}". ${
+        error instanceof Error ? error.message : "Invalid condition syntax"
+      }`
+    );
+  }
+};
+```
+
+**JEXL Expression Examples:**
+
+- `myVar.count > 10` - Compare values
+- `user.email == "test@example.com"` - String equality
+- `items.length > 0 && status == "active"` - Logical operators
+- `response.data.items[0].name` - Nested access
+
+#### Human Approval Pattern
+
+For nodes that pause execution waiting for user input:
+
+```typescript
+// Custom error class
+export class PauseExecutionError extends Error {
+  constructor(
+    public approvalId: string,
+    message: string = "Execution paused for human approval"
+  ) {
+    super(message);
+    this.name = "PauseExecutionError";
+  }
+}
+
+// In the executor
+export const humanApprovalExecutor: NodeExecutor<
+  HumanApprovalFormValues
+> = async ({ data, nodeId, context, step, publish, userId, executionId }) => {
+  // ... validation and setup ...
+
+  // Create approval record
+  const approval = await step.run(`create-approval-${nodeId}`, async () => {
+    return await prisma.approval.create({
+      data: {
+        executionId: executionId,
+        nodeId: nodeId,
+        userId: userId,
+        status: ApprovalStatus.PENDING,
+        message: renderedMessage,
+        context: context as any,
+      },
+    });
+  });
+
+  // Pause execution
+  await step.run(`pause-execution-${nodeId}`, async () => {
+    await prisma.execution.update({
+      where: { id: executionId },
+      data: { status: ExecutionStatus.PAUSED },
+    });
+  });
+
+  // Throw special error to pause workflow
+  throw new PauseExecutionError(approval.id, "Waiting for human approval");
+};
+```
+
+The `functions.ts` handles this error specially:
+
+```typescript
+if (error instanceof PauseExecutionError) {
+  return {
+    workflowId,
+    result: context,
+    paused: true,
+    approvalId: error.approvalId,
+  };
+}
+```
+
+#### Loop Node Pattern
+
+For iterating over arrays with progress tracking:
+
+```typescript
+// Channel with iteration topic
+export const loopChannel = channel("loop-execution")
+  .addTopic(
+    topic("status").type<{
+      nodeId: string;
+      status: NodeStatus;
+    }>()
+  )
+  .addTopic(
+    topic("iteration").type<{
+      nodeId: string;
+      current: number;
+      total: number;
+    }>()
+  );
+
+// Publishing iteration progress
+await step.run(`publish-iteration-${node.id}-${i}`, async () => {
+  await publish(
+    loopChannel().iteration({
+      nodeId: node.id,
+      current: i + 1,
+      total: items.length,
+    })
+  );
+});
 ```
 
 ---
@@ -794,12 +994,12 @@ const credentialLogos: Record<CredentialType, string> = {
 
 The Discord node is an excellent example of a node without complex credentials:
 
-```typescript
-// Files to review:
-// - src/features/executions/components/discord/node.tsx
-// - src/features/executions/components/discord/dialog.tsx
-// - src/features/executions/components/discord/executor.ts
-// - src/inngest/channels/discord.ts
+```
+src/features/executions/components/discord/
+├── node.tsx
+├── dialog.tsx
+├── executor.ts
+└── actions.ts
 ```
 
 **Features:**
@@ -812,12 +1012,12 @@ The Discord node is an excellent example of a node without complex credentials:
 
 The OpenAI node shows how to handle API keys:
 
-```typescript
-// Files to review:
-// - src/features/executions/components/openai/node.tsx
-// - src/features/executions/components/openai/dialog.tsx
-// - src/features/executions/components/openai/executor.ts
-// - src/inngest/channels/openai.ts
+```
+src/features/executions/components/openai/
+├── node.tsx
+├── dialog.tsx
+├── executor.ts
+└── actions.ts
 ```
 
 **Features:**
@@ -825,25 +1025,75 @@ The OpenAI node shows how to handle API keys:
 - Use encrypted credentials
 - Model selection
 - Support system and user prompts
-- Integration with AI SDK
+- Integration with Vercel AI SDK
 
-### HTTP Example: HTTP Request Node
+### Control Flow: Conditional Node
 
-The HTTP Request node shows how to make external API calls:
+The Conditional node demonstrates branching:
 
-```typescript
-// Files to review:
-// - src/features/executions/components/http-request/node.tsx
-// - src/features/executions/components/http-request/dialog.tsx
-// - src/features/executions/components/http-request/executor.ts
-// - src/features/executions/components/http-request/constants.ts
+```
+src/features/executions/components/conditional/
+├── node.tsx
+├── dialog.tsx
+└── executor.ts
 ```
 
 **Features:**
 
-- Support multiple HTTP methods (GET, POST, PUT, PATCH, DELETE)
-- JSON body handling with templates
-- No credentials (public endpoints or tokens in URL)
+- JEXL expression evaluation
+- True/false output paths
+- Context-aware conditions
+
+### Control Flow: Switch Node
+
+The Switch node demonstrates multi-way branching:
+
+```
+src/features/executions/components/switch/
+├── node.tsx
+├── dialog.tsx
+└── executor.ts
+```
+
+**Features:**
+
+- Multiple case values
+- Default fallback
+- Expression evaluation
+
+### Control Flow: Loop Node
+
+The Loop node demonstrates array iteration:
+
+```
+src/features/executions/components/loop/
+├── node.tsx
+├── dialog.tsx
+└── executor.ts
+```
+
+**Features:**
+
+- Array path resolution
+- Item variable injection
+- Iteration progress tracking
+
+### Human-in-the-Loop: Human Approval Node
+
+The Human Approval node demonstrates workflow pausing:
+
+```
+src/features/executions/components/human-approval/
+├── node.tsx
+├── dialog.tsx
+└── executor.ts
+```
+
+**Features:**
+
+- Pause execution
+- Store approval request in database
+- Resume on approval/rejection
 
 ---
 
@@ -897,13 +1147,29 @@ const rendered = Handlebars.compile(template)(context);
 - `{{variableName["property"]}}`: bracket notation (transformed to lookup helper)
 - `{{json variableName}}`: JSON stringification
 
-### 4. Variable Naming
+### 4. JEXL Expressions (for control flow)
+
+For condition evaluation, prefer JEXL over Handlebars:
+
+```typescript
+import jexl from "jexl";
+
+const result = jexl.evalSync(expression, context);
+```
+
+**Advantages:**
+
+- Better operator support (`>`, `<`, `==`, `&&`, `||`)
+- Cleaner syntax without curly braces
+- Type-aware comparisons
+
+### 5. Variable Naming
 
 - Use descriptive names for `variableName`
 - Suggest a default name in the placeholder
 - Validate that the name is a valid JavaScript identifier
 
-### 5. Realtime Status
+### 6. Realtime Status
 
 **IMPORTANT**: Always wrap `publish()` in `step.run()` with unique IDs to avoid conflicts in parallel execution.
 
@@ -932,7 +1198,7 @@ await step.run(`publish-error-final-${nodeId}`, async () => {
 - Without unique IDs, these internal steps would have the same ID, causing `AUTOMATIC_PARALLEL_INDEXING` warnings
 - By wrapping in `step.run()` with `${nodeId}`, each node gets unique step IDs
 
-### 6. Workflow Context
+### 7. Workflow Context
 
 The context is an object shared between all nodes:
 
@@ -950,7 +1216,7 @@ return {
 };
 ```
 
-### 7. Performance
+### 8. Performance
 
 - Use `step.run()` for all I/O operations (including `publish()` calls)
 - Avoid blocking synchronous operations
@@ -958,7 +1224,7 @@ return {
 - Each `step.run()` creates a checkpoint in Inngest for retry/debugging
 - Use unique step IDs (with `${nodeId}`) to prevent conflicts in parallel execution
 
-### 8. Security
+### 9. Security
 
 - Always decrypt credentials on the server side
 - Never expose API keys in logs
@@ -972,7 +1238,7 @@ return {
 ### Node doesn't appear in the list
 
 - ✅ Check that the type is added in `prisma/schema.prisma`
-- ✅ Run `npx prisma generate`
+- ✅ Run `pnpx prisma generate`
 - ✅ Check that the node is added in `node-types.ts`
 - ✅ Restart the development server
 
@@ -990,6 +1256,12 @@ return {
 - ✅ Register the `json` and `lookup` helpers
 - ✅ Check that the context contains the referenced variables
 
+### JEXL expressions don't work
+
+- ✅ Remove `{{}}` wrappers from expressions
+- ✅ Use `jexl.evalSync()` for synchronous evaluation
+- ✅ Check that context variables exist and have expected types
+
 ### Executor doesn't run
 
 - ✅ Check that the executor is registered in `executor-registry.ts`
@@ -1006,7 +1278,7 @@ return {
 
 ### TypeScript compilation error
 
-- ✅ Run `npx prisma generate` to regenerate types
+- ✅ Run `pnpx prisma generate` to regenerate types
 - ✅ Check imports from `@/generated/prisma/`
 - ✅ Restart TypeScript server in your IDE
 
@@ -1055,9 +1327,9 @@ Use this checklist to ensure all files are in place:
 
 ### Commands to Run
 
-- [ ] `npx prisma format` - Format schema
-- [ ] `npx prisma generate` - Generate types
-- [ ] `npx prisma migrate dev --name add_{node_name}` - Create migration
+- [ ] `pnpx prisma format` - Format schema
+- [ ] `pnpx prisma generate` - Generate types
+- [ ] `pnpx prisma migrate dev --name add_{node_name}` - Create migration
 - [ ] Restart development server
 
 ### Tests
@@ -1069,6 +1341,7 @@ Use this checklist to ensure all files are in place:
 - [ ] Realtime statuses update
 - [ ] Results are accessible in subsequent nodes
 - [ ] Handlebars templates work
+- [ ] JEXL expressions work (if applicable)
 - [ ] Credentials are retrieved and decrypted (if applicable)
 
 ---
@@ -1080,8 +1353,10 @@ Use this checklist to ensure all files are in place:
 - [Inngest Documentation](https://www.inngest.com/docs) - To understand steps, retry, and realtime
 - [React Flow Documentation](https://reactflow.dev/) - To customize node appearance
 - [Handlebars Documentation](https://handlebarsjs.com/) - For templates
+- [JEXL Documentation](https://github.com/TomFrost/jexl) - For expression evaluation
 - [Zod Documentation](https://zod.dev/) - For form validation
 - [Prisma Documentation](https://www.prisma.io/docs) - For database schema
+- [Vercel AI SDK](https://sdk.vercel.ai/) - For AI integrations
 
 ### Reference Source Code
 
@@ -1090,7 +1365,9 @@ Existing nodes are your best references:
 1. **Simple Node**: `discord` - Basic example without complexity
 2. **AI Node**: `openai`, `gemini`, `anthropic` - AI SDK integration
 3. **HTTP Node**: `http-request` - External API calls
-4. **Trigger Node**: `manual-trigger`, `google-form-trigger` - Workflow triggering
+4. **Control Flow**: `conditional`, `switch`, `loop` - Branching and iteration
+5. **Human-in-the-Loop**: `human-approval` - Pausing for user input
+6. **Trigger Node**: `manual-trigger`, `webhook-trigger`, `schedule-trigger` - Workflow triggering
 
 ---
 
