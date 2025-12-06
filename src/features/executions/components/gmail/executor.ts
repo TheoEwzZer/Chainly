@@ -75,7 +75,10 @@ interface ParsedEmail {
   };
 }
 
-function buildGmailQuery(data: GmailFormValues, context: WorkflowContext): string {
+function buildGmailQuery(
+  data: GmailFormValues,
+  context: WorkflowContext
+): string {
   const parts: string[] = [];
   const now = new Date();
 
@@ -83,7 +86,8 @@ function buildGmailQuery(data: GmailFormValues, context: WorkflowContext): strin
   switch (data.dateFilter) {
     case "today": {
       const today = Math.floor(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() /
+          1000
       );
       parts.push(`after:${today}`);
       break;
@@ -92,10 +96,15 @@ function buildGmailQuery(data: GmailFormValues, context: WorkflowContext): strin
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStart = Math.floor(
-        new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).getTime() / 1000
+        new Date(
+          yesterday.getFullYear(),
+          yesterday.getMonth(),
+          yesterday.getDate()
+        ).getTime() / 1000
       );
       const todayStart = Math.floor(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() /
+          1000
       );
       parts.push(`after:${yesterdayStart} before:${todayStart}`);
       break;
@@ -116,25 +125,28 @@ function buildGmailQuery(data: GmailFormValues, context: WorkflowContext): strin
     }
     case "specific_date": {
       if (data.specificDate) {
-        const dateStr = data.specificDate.replace(/-/g, "/");
+        const dateStr = data.specificDate.replaceAll("-", "/");
         parts.push(`after:${dateStr}`);
         // Add next day as before
         const nextDay = new Date(data.specificDate);
         nextDay.setDate(nextDay.getDate() + 1);
-        const nextDayStr = nextDay.toISOString().split("T")[0].replace(/-/g, "/");
+        const nextDayStr = nextDay
+          .toISOString()
+          .split("T")[0]
+          .replaceAll("-", "/");
         parts.push(`before:${nextDayStr}`);
       }
       break;
     }
     case "date_range": {
       if (data.startDate) {
-        const startStr = data.startDate.replace(/-/g, "/");
+        const startStr = data.startDate.replaceAll("-", "/");
         parts.push(`after:${startStr}`);
       }
       if (data.endDate) {
         const endDate = new Date(data.endDate);
         endDate.setDate(endDate.getDate() + 1);
-        const endStr = endDate.toISOString().split("T")[0].replace(/-/g, "/");
+        const endStr = endDate.toISOString().split("T")[0].replaceAll("-", "/");
         parts.push(`before:${endStr}`);
       }
       break;
@@ -203,15 +215,20 @@ function buildGmailQuery(data: GmailFormValues, context: WorkflowContext): strin
   return parts.join(" ");
 }
 
-function getHeader(headers: Array<{ name: string; value: string }>, name: string): string {
-  const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
+function getHeader(
+  headers: Array<{ name: string; value: string }>,
+  name: string
+): string {
+  const header = headers.find(
+    (h) => h.name.toLowerCase() === name.toLowerCase()
+  );
   return header?.value || "";
 }
 
 function decodeBase64Url(data: string): string {
   try {
     // Replace URL-safe characters and add padding
-    const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+    const base64 = data.replaceAll("-", "+").replaceAll("_", "/");
     const padding = base64.length % 4;
     const paddedBase64 = padding ? base64 + "=".repeat(4 - padding) : base64;
     return Buffer.from(paddedBase64, "base64").toString("utf-8");
@@ -220,9 +237,10 @@ function decodeBase64Url(data: string): string {
   }
 }
 
-function extractBody(
-  payload: GmailMessageDetail["payload"]
-): { plain?: string; html?: string } {
+function extractBody(payload: GmailMessageDetail["payload"]): {
+  plain?: string;
+  html?: string;
+} {
   const result: { plain?: string; html?: string } = {};
 
   function processPartRecursively(part: any): void {
@@ -258,27 +276,36 @@ function extractBody(
   return result;
 }
 
-function parseEmailDetail(detail: GmailMessageDetail, includeBody: boolean): ParsedEmail {
-  const headers = detail.payload.headers;
+function parseEmailDetail(
+  detail: GmailMessageDetail,
+  includeBody: boolean
+): ParsedEmail {
+  const headers = detail.payload?.headers || [];
   const toHeader = getHeader(headers, "To");
+  const labelIds = detail.labelIds || [];
 
   const email: ParsedEmail = {
     id: detail.id,
     threadId: detail.threadId,
-    snippet: detail.snippet,
+    snippet: detail.snippet || "",
     subject: getHeader(headers, "Subject"),
     from: getHeader(headers, "From"),
     to: toHeader ? toHeader.split(",").map((t) => t.trim()) : [],
-    date: new Date(parseInt(detail.internalDate)).toISOString(),
-    isUnread: detail.labelIds.includes("UNREAD"),
-    isStarred: detail.labelIds.includes("STARRED"),
-    labels: detail.labelIds,
-    hasAttachment: detail.payload.parts?.some(
-      (p) => p.mimeType?.startsWith("application/") || p.mimeType?.startsWith("image/")
-    ) || false,
+    date: detail.internalDate
+      ? new Date(Number.parseInt(detail.internalDate)).toISOString()
+      : new Date().toISOString(),
+    isUnread: labelIds.includes("UNREAD"),
+    isStarred: labelIds.includes("STARRED"),
+    labels: labelIds,
+    hasAttachment:
+      detail.payload?.parts?.some(
+        (p) =>
+          p.mimeType?.startsWith("application/") ||
+          p.mimeType?.startsWith("image/")
+      ) || false,
   };
 
-  if (includeBody) {
+  if (includeBody && detail.payload) {
     email.body = extractBody(detail.payload);
   }
 
@@ -332,10 +359,10 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
       return await getValidGmailAccessToken(data.credentialId, userId);
     });
 
-    const query = buildGmailQuery(data, context);
-    const maxResults = data.maxResults || 50;
-    const includeSpamTrash = data.includeSpamTrash || false;
-    const fetchBody = data.fetchBody === "full";
+    const query: string = buildGmailQuery(data, context);
+    const maxResults: number = data.maxResults || 50;
+    const includeSpamTrash: boolean = data.includeSpamTrash || false;
+    const fetchBody: boolean = data.fetchBody === "full";
 
     const result: WorkflowContext = await step.run(
       `gmail-fetch-${nodeId}`,
@@ -354,7 +381,10 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
             searchParams.includeSpamTrash = "true";
           }
 
-          const listResponse = await ky
+          const listResponse: {
+            messages?: GmailMessage[];
+            resultSizeEstimate?: number;
+          } = await ky
             .get("https://www.googleapis.com/gmail/v1/users/me/messages", {
               headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -372,7 +402,7 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
               resultSizeEstimate?: number;
             }>();
 
-          const messages = listResponse.messages || [];
+          const messages: GmailMessage[] = listResponse.messages || [];
 
           if (messages.length === 0) {
             return {
@@ -392,38 +422,42 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
 
           // Step 2: Fetch details for each message
           const emails: ParsedEmail[] = [];
-          const format = fetchBody ? "full" : "metadata";
-          const metadataHeaders = ["From", "To", "Subject", "Date"];
+          const format: "metadata" | "full" = fetchBody ? "full" : "metadata";
 
           for (const message of messages) {
             try {
-              const detailResponse = await ky
-                .get(
-                  `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${accessToken}`,
-                    },
-                    searchParams: {
-                      format,
-                      ...(format === "metadata" && {
-                        metadataHeaders: metadataHeaders.join(","),
-                      }),
-                    },
-                    timeout: 30000,
-                    retry: {
-                      limit: 2,
-                      methods: ["get"],
-                      statusCodes: [408, 413, 429, 500, 502, 503, 504],
-                    },
-                  }
-                )
+              const url = new URL(
+                `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}`
+              );
+              url.searchParams.set("format", format);
+
+              if (format === "metadata") {
+                for (const header of ["From", "To", "Subject", "Date"]) {
+                  url.searchParams.append("metadataHeaders", header);
+                }
+              }
+
+              const detailResponse: GmailMessageDetail = await ky
+                .get(url.toString(), {
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                  timeout: 30000,
+                  retry: {
+                    limit: 2,
+                    methods: ["get"],
+                    statusCodes: [408, 413, 429, 500, 502, 503, 504],
+                  },
+                })
                 .json<GmailMessageDetail>();
 
               emails.push(parseEmailDetail(detailResponse, fetchBody));
             } catch (detailError) {
               // Skip individual message errors, continue with others
-              console.error(`Failed to fetch message ${message.id}:`, detailError);
+              console.error(
+                `Failed to fetch message ${message.id}:`,
+                detailError
+              );
             }
           }
 
@@ -455,7 +489,9 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
           }
 
           throw new NonRetriableError(
-            `Gmail Node: Failed to fetch emails. ${error.message || "Unknown error"}`
+            `Gmail Node: Failed to fetch emails. ${
+              error.message || "Unknown error"
+            }`
           );
         }
       }
