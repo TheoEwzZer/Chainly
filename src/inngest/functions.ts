@@ -27,6 +27,7 @@ import { anthropicChannel } from "./channels/anthropic";
 import { openaiChannel } from "./channels/openai";
 import { discordChannel } from "./channels/discord";
 import { googleCalendarChannel } from "./channels/google-calendar";
+import { gmailChannel } from "./channels/gmail";
 import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { humanApprovalChannel } from "./channels/human-approval";
 import { loopChannel } from "./channels/loop";
@@ -59,6 +60,8 @@ const getChannelForNodeType = (nodeType: NodeType) => {
       return discordChannel();
     case NodeType.GOOGLE_CALENDAR:
       return googleCalendarChannel();
+    case NodeType.GMAIL:
+      return gmailChannel();
     case NodeType.HUMAN_APPROVAL:
       return humanApprovalChannel();
     case NodeType.LOOP:
@@ -103,6 +106,7 @@ export const executeWorkflow = inngest.createFunction(
       openaiChannel(),
       discordChannel(),
       googleCalendarChannel(),
+      gmailChannel(),
       humanApprovalChannel(),
       loopChannel(),
       conditionalChannel(),

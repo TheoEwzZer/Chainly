@@ -24,12 +24,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       exp: Date.now() + 10 * 60 * 1000,
     });
 
-    const authUrl: string = getGoogleOAuth2AuthUrl("google-calendar", state);
+    const authUrl: string = getGoogleOAuth2AuthUrl("gmail", state);
 
     return NextResponse.json({ authUrl });
   } catch (error) {
     Sentry.captureException(error, {
-      tags: { component: "google-oauth" },
+      tags: { component: "gmail-oauth" },
     });
     return NextResponse.json(
       { error: "Failed to generate OAuth URL" },

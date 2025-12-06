@@ -11,7 +11,15 @@ export const GOOGLE_CALENDAR_SCOPES: string[] = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
-export function getGoogleOAuth2Client(): OAuth2Client {
+export const GMAIL_SCOPES: string[] = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+];
+
+export type GoogleOAuthService = "google-calendar" | "gmail";
+
+export function getGoogleOAuth2Client(
+  service: GoogleOAuthService = "google-calendar"
+): OAuth2Client {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error("Google OAuth credentials are not configured");
   }
@@ -19,26 +27,34 @@ export function getGoogleOAuth2Client(): OAuth2Client {
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    `${BASE_URL}/api/oauth/google-calendar/callback`
+    `${BASE_URL}/api/oauth/${service}/callback`
   );
 }
 
-export function getGoogleOAuth2AuthUrl(state?: string): string {
-  const oauth2Client = getGoogleOAuth2Client();
+export function getGoogleOAuth2AuthUrl(
+  service: GoogleOAuthService = "google-calendar",
+  state?: string
+): string {
+  const oauth2Client = getGoogleOAuth2Client(service);
+  const scopes: string[] = service === "gmail" ? GMAIL_SCOPES : GOOGLE_CALENDAR_SCOPES;
+
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: GOOGLE_CALENDAR_SCOPES,
+    scope: scopes,
     prompt: "consent",
     state: state || undefined,
   });
 }
 
-export async function getTokensFromCode(code: string): Promise<{
+export async function getTokensFromCode(
+  code: string,
+  service: GoogleOAuthService = "google-calendar"
+): Promise<{
   access_token: string;
   refresh_token?: string;
   expires_in?: number;
 }> {
-  const oauth2Client = getGoogleOAuth2Client();
+  const oauth2Client = getGoogleOAuth2Client(service);
   const { tokens } = await oauth2Client.getToken(code);
 
   if (!tokens.access_token) {
@@ -54,11 +70,14 @@ export async function getTokensFromCode(code: string): Promise<{
   };
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<{
+export async function refreshAccessToken(
+  refreshToken: string,
+  service: GoogleOAuthService = "google-calendar"
+): Promise<{
   access_token: string;
   expires_in?: number;
 }> {
-  const oauth2Client = getGoogleOAuth2Client();
+  const oauth2Client = getGoogleOAuth2Client(service);
   oauth2Client.setCredentials({
     refresh_token: refreshToken,
   });

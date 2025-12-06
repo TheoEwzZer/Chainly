@@ -15,6 +15,7 @@ import { anthropicExecutor } from "../components/anthropic/executor";
 import { openaiExecutor } from "../components/openai/executor";
 import { discordExecutor } from "../components/discord/executor";
 import { googleCalendarExecutor } from "../components/google-calendar/executor";
+import { gmailExecutor } from "../components/gmail/executor";
 import { humanApprovalExecutor } from "../components/human-approval/executor";
 import { loopExecutor } from "../components/loop/executor";
 import { conditionalExecutor } from "../components/conditional/executor";
@@ -39,6 +40,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.OPENAI]: openaiExecutor,
   [NodeType.DISCORD]: discordExecutor,
   [NodeType.GOOGLE_CALENDAR]: googleCalendarExecutor,
+  [NodeType.GMAIL]: gmailExecutor,
   [NodeType.HUMAN_APPROVAL]: humanApprovalExecutor,
   [NodeType.LOOP]: loopExecutor,
   [NodeType.CONDITIONAL]: conditionalExecutor,

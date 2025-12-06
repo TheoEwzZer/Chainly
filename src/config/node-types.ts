@@ -94,6 +94,13 @@ export const executionNodes: NodeTypeOption[] = [
     icon: "/logos/google-calendar.svg",
   },
   {
+    type: NodeType.GMAIL,
+    label: "Gmail",
+    description:
+      "Fetches emails from Gmail with advanced filters (date, read status, sender, etc.).",
+    icon: "/logos/gmail.svg",
+  },
+  {
     type: NodeType.HUMAN_APPROVAL,
     label: "Human Approval",
     description:
