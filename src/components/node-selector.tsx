@@ -131,7 +131,7 @@ export function NodeSelector({
                       alt={nodeType.label}
                       width={20}
                       height={20}
-                      className="size-5 object-contain rounded-sm"
+                      className="size-5 object-contain"
                     />
                   ) : (
                     <Icon className="size-5" />
