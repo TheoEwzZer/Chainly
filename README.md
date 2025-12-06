@@ -111,7 +111,7 @@ Chainly is a workflow automation platform similar to n8n, Zapier, or IFTTT. It a
 4. **Set up the database**
 
    ```bash
-   npx prisma migrate dev
+   pnpx prisma migrate dev
    ```
 
 5. **Start the development servers**
@@ -143,10 +143,10 @@ pnpm run build
 pnpm run lint
 
 # Database commands
-npx prisma format          # Format schema file
-npx prisma generate        # Generate Prisma client
-npx prisma migrate dev     # Apply migrations in development
-npx prisma studio          # Open Prisma Studio GUI
+pnpx prisma format          # Format schema file
+pnpx prisma generate        # Generate Prisma client
+pnpx prisma migrate dev     # Apply migrations in development
+pnpx prisma studio          # Open Prisma Studio GUI
 ```
 
 ## Project Structure
