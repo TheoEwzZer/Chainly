@@ -82,45 +82,43 @@ function buildGmailQuery(
   const parts: string[] = [];
   const now = new Date();
 
+  const formatDateForGmail = (date: Date): string => {
+    const year: number = date.getFullYear();
+    const month: string = String(date.getMonth() + 1).padStart(2, "0");
+    const day: string = String(date.getDate()).padStart(2, "0");
+    return `${year}/${month}/${day}`;
+  };
+
   // Date filters
   switch (data.dateFilter) {
     case "today": {
-      const today = Math.floor(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() /
-          1000
-      );
-      parts.push(`after:${today}`);
+      const todayStr: string = formatDateForGmail(now);
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr: string = formatDateForGmail(tomorrow);
+      parts.push(`after:${todayStr} before:${tomorrowStr}`);
       break;
     }
     case "yesterday": {
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStart = Math.floor(
-        new Date(
-          yesterday.getFullYear(),
-          yesterday.getMonth(),
-          yesterday.getDate()
-        ).getTime() / 1000
-      );
-      const todayStart = Math.floor(
-        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() /
-          1000
-      );
-      parts.push(`after:${yesterdayStart} before:${todayStart}`);
+      const yesterdayStr: string = formatDateForGmail(yesterday);
+      const todayStr: string = formatDateForGmail(now);
+      parts.push(`after:${yesterdayStr} before:${todayStr}`);
       break;
     }
     case "this_week": {
       const weekAgo = new Date(now);
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoTimestamp = Math.floor(weekAgo.getTime() / 1000);
-      parts.push(`after:${weekAgoTimestamp}`);
+      const weekAgoStr: string = formatDateForGmail(weekAgo);
+      parts.push(`after:${weekAgoStr}`);
       break;
     }
     case "this_month": {
       const monthAgo = new Date(now);
       monthAgo.setDate(monthAgo.getDate() - 30);
-      const monthAgoTimestamp = Math.floor(monthAgo.getTime() / 1000);
-      parts.push(`after:${monthAgoTimestamp}`);
+      const monthAgoStr: string = formatDateForGmail(monthAgo);
+      parts.push(`after:${monthAgoStr}`);
       break;
     }
     case "specific_date": {
