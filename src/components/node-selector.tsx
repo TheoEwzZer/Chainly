@@ -2,35 +2,34 @@
 
 import { NodeType } from "@/generated/prisma/enums";
 import { useCallback, type ReactElement } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "./ui/sheet";
 import Image from "next/image";
-import { Separator } from "./ui/separator";
 import { useReactFlow, XYPosition } from "@xyflow/react";
 import { createId } from "@paralleldrive/cuid2";
 import type { Node } from "@xyflow/react";
 import {
   triggerNodes,
-  executionNodes,
+  nodeCategories,
   type NodeTypeOption,
+  type NodeCategory,
 } from "@/config/node-types";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "./ui/command";
 
 interface NodeSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  children: ReactElement;
 }
 
 export function NodeSelector({
   open,
   onOpenChange,
-  children,
 }: Readonly<NodeSelectorProps>): ReactElement {
   const { setNodes, screenToFlowPosition } = useReactFlow();
 
@@ -68,88 +67,81 @@ export function NodeSelector({
     [onOpenChange, screenToFlowPosition, setNodes]
   );
 
+  const renderNodeItem = (nodeType: NodeTypeOption): ReactElement => {
+    const Icon = nodeType.icon;
+
+    return (
+      <CommandItem
+        key={nodeType.type}
+        value={`${nodeType.label} ${nodeType.description}`}
+        onSelect={(): void => handleNodeSelect(nodeType)}
+        className="flex items-center gap-3 py-3 cursor-pointer"
+      >
+        {typeof Icon === "string" ? (
+          <Image
+            src={Icon}
+            alt={nodeType.label}
+            width={20}
+            height={20}
+            className="size-5 object-contain rounded-none"
+          />
+        ) : (
+          <Icon className="size-5 text-muted-foreground" />
+        )}
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{nodeType.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {nodeType.description}
+          </span>
+        </div>
+      </CommandItem>
+    );
+  };
+
+  const renderCategory = (category: NodeCategory): ReactElement => {
+    const CategoryIcon = category.icon;
+
+    return (
+      <CommandGroup
+        key={category.id}
+        heading={
+          <div className="flex items-center gap-2">
+            <CategoryIcon className="size-3.5" />
+            {category.label}
+          </div>
+        }
+      >
+        {category.nodes.map(renderNodeItem)}
+      </CommandGroup>
+    );
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>What triggers this workflow?</SheetTitle>
-          <SheetDescription>
-            A trigger is a step that starts your workflow.
-          </SheetDescription>
-        </SheetHeader>
-        <div>
-          {triggerNodes.map((nodeType: NodeTypeOption): ReactElement => {
-            const Icon = nodeType.icon;
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add a node"
+      description="Search for a node to add to your workflow"
+    >
+      <CommandInput placeholder="Search nodes..." />
+      <CommandList className="max-h-[790px]">
+        <CommandEmpty>No nodes found.</CommandEmpty>
 
-            return (
-              <div
-                key={nodeType.type}
-                className="w-full justify-start h-auto py-5 px-4 rounder-none cursor-pointer border-l-2 border-transparent hover:border-primary"
-                onClick={(): void => handleNodeSelect(nodeType)}
-              >
-                <div className="flex items-center gap-6 w-full overflow-hidden">
-                  {typeof Icon === "string" ? (
-                    <Image
-                      src={Icon}
-                      alt={nodeType.label}
-                      width={20}
-                      height={20}
-                      className="size-5 object-contain rounded-none"
-                    />
-                  ) : (
-                    <Icon className="size-5" />
-                  )}
-                  <div className="flex flex-col items-start text-left">
-                    <span className="text-sm font-medium">
-                      {nodeType.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {nodeType.description}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <Separator />
-        <div>
-          {executionNodes.map((nodeType: NodeTypeOption): ReactElement => {
-            const Icon = nodeType.icon;
+        <CommandGroup heading="Triggers">
+          {triggerNodes.map(renderNodeItem)}
+        </CommandGroup>
 
-            return (
-              <div
-                key={nodeType.type}
-                className="w-full justify-start h-auto py-5 px-4 rounder-none cursor-pointer border-l-2 border-transparent hover:border-primary"
-                onClick={(): void => handleNodeSelect(nodeType)}
-              >
-                <div className="flex items-center gap-6 w-full overflow-hidden">
-                  {typeof Icon === "string" ? (
-                    <Image
-                      src={Icon}
-                      alt={nodeType.label}
-                      width={20}
-                      height={20}
-                      className="size-5 object-contain"
-                    />
-                  ) : (
-                    <Icon className="size-5" />
-                  )}
-                  <div className="flex flex-col items-start text-left">
-                    <span className="text-sm font-medium">
-                      {nodeType.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {nodeType.description}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </SheetContent>
-    </Sheet>
+        <CommandSeparator />
+
+        {nodeCategories.map(
+          (category: NodeCategory, index: number): ReactElement => (
+            <div key={category.id}>
+              {renderCategory(category)}
+              {index < nodeCategories.length - 1 && <CommandSeparator />}
+            </div>
+          )
+        )}
+      </CommandList>
+    </CommandDialog>
   );
 }
