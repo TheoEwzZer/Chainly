@@ -502,7 +502,7 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
   if (data.credentialId) {
     const credential = await step.run(
       `get-credential-${nodeId}`,
-      async (): Promise<void> => {
+      async (): Promise<Credential | null> => {
         return await prisma.credential.findUnique({
           where: { id: data.credentialId, userId },
           select: { value: true },
@@ -922,7 +922,7 @@ export const humanApprovalExecutor: NodeExecutor<
   // Create approval record
   const approval = await step.run(
     `create-approval-${nodeId}`,
-    async (): Promise<void> => {
+    async (): Promise<Approval> => {
       return await prisma.approval.create({
         data: {
           executionId: executionId,
@@ -937,7 +937,7 @@ export const humanApprovalExecutor: NodeExecutor<
   );
 
   // Pause execution
-  await step.run(`pause-execution-${nodeId}`, async (): Promise<void> => {
+  await step.run(`pause-execution-${nodeId}`, async (): Promise<Execution> => {
     await prisma.execution.update({
       where: { id: executionId },
       data: { status: ExecutionStatus.PAUSED },
