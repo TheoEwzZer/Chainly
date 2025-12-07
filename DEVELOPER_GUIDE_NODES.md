@@ -461,7 +461,7 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
 }) => {
   // 1. Publish "loading" status
   // IMPORTANT: Wrap publish() in step.run() with unique ID to avoid conflicts in parallel execution
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       yourNodeChannel().status({
         nodeId,
@@ -472,19 +472,22 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
 
   // 2. Validate required fields
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        yourNodeChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          yourNodeChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Your Node: Variable name is required");
   }
 
   if (!data.yourField) {
-    await step.run(`publish-error-field-${nodeId}`, async () => {
+    await step.run(`publish-error-field-${nodeId}`, async (): Promise<void> => {
       await publish(
         yourNodeChannel().status({
           nodeId,
@@ -497,12 +500,15 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
 
   // 3. Retrieve credentials if necessary
   if (data.credentialId) {
-    const credential = await step.run(`get-credential-${nodeId}`, async () => {
-      return await prisma.credential.findUnique({
-        where: { id: data.credentialId, userId },
-        select: { value: true },
-      });
-    });
+    const credential = await step.run(
+      `get-credential-${nodeId}`,
+      async (): Promise<void> => {
+        return await prisma.credential.findUnique({
+          where: { id: data.credentialId, userId },
+          select: { value: true },
+        });
+      }
+    );
 
     if (!credential) {
       await step.run(
@@ -550,7 +556,7 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
     );
 
     // 6. Publish "success" status
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         yourNodeChannel().status({
           nodeId,
@@ -562,7 +568,7 @@ export const yourNodeExecutor: NodeExecutor<YourNodeFormValues> = async ({
     return result;
   } catch (error) {
     // 7. Handle errors
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         yourNodeChannel().status({
           nodeId,
@@ -914,21 +920,24 @@ export const humanApprovalExecutor: NodeExecutor<
   // ... validation and setup ...
 
   // Create approval record
-  const approval = await step.run(`create-approval-${nodeId}`, async () => {
-    return await prisma.approval.create({
-      data: {
-        executionId: executionId,
-        nodeId: nodeId,
-        userId: userId,
-        status: ApprovalStatus.PENDING,
-        message: renderedMessage,
-        context: context as any,
-      },
-    });
-  });
+  const approval = await step.run(
+    `create-approval-${nodeId}`,
+    async (): Promise<void> => {
+      return await prisma.approval.create({
+        data: {
+          executionId: executionId,
+          nodeId: nodeId,
+          userId: userId,
+          status: ApprovalStatus.PENDING,
+          message: renderedMessage,
+          context: context as any,
+        },
+      });
+    }
+  );
 
   // Pause execution
-  await step.run(`pause-execution-${nodeId}`, async () => {
+  await step.run(`pause-execution-${nodeId}`, async (): Promise<void> => {
     await prisma.execution.update({
       where: { id: executionId },
       data: { status: ExecutionStatus.PAUSED },
@@ -975,7 +984,7 @@ export const loopChannel = channel("loop-execution")
   );
 
 // Publishing iteration progress
-await step.run(`publish-iteration-${node.id}-${i}`, async () => {
+await step.run(`publish-iteration-${node.id}-${i}`, async (): Promise<void> => {
   await publish(
     loopChannel().iteration({
       nodeId: node.id,
@@ -1106,7 +1115,7 @@ try {
   // Your logic
 } catch (error) {
   // IMPORTANT: Wrap publish in step.run with unique ID
-  await step.run(`publish-error-final-${nodeId}`, async () => {
+  await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
     await publish(
       yourNodeChannel().status({
         nodeId,
@@ -1177,17 +1186,17 @@ Always publish status in this order:
 
 ```typescript
 // 1. At the beginning
-await step.run(`publish-loading-${nodeId}`, async () => {
+await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
   await publish(channel().status({ nodeId, status: "loading" }));
 });
 
 // 2. On success
-await step.run(`publish-success-${nodeId}`, async () => {
+await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
   await publish(channel().status({ nodeId, status: "success" }));
 });
 
 // 3. On error (in catch block)
-await step.run(`publish-error-final-${nodeId}`, async () => {
+await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
   await publish(channel().status({ nodeId, status: "error" }));
 });
 ```
@@ -1295,7 +1304,7 @@ Code: AUTOMATIC_PARALLEL_INDEXING
 
 - ✅ Wrap ALL `publish()` calls in `step.run()` with unique IDs
 - ✅ Use `${nodeId}` in step IDs to make them unique per node
-- ✅ Example: `await step.run(\`publish-loading-\${nodeId}\`, async () => { await publish(...); })`
+- ✅ Example: `await step.run(\`publish-loading-\${nodeId}\`, async (): Promise<void> => { await publish(...); })`
 - ✅ Check that you didn't forget any `publish()` calls (loading, success, error, validation errors)
 
 ---

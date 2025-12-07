@@ -40,7 +40,7 @@ export const waitExecutor: NodeExecutor<WaitFormValues> = async ({
   const unit: TimeUnit = data.unit || "seconds";
   const durationMs: number = getDurationMs(duration, unit);
 
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     const startedAt: string = new Date().toISOString();
 
     await publish(
@@ -63,7 +63,7 @@ export const waitExecutor: NodeExecutor<WaitFormValues> = async ({
 
   await step.sleep(`wait-${nodeId}`, inngestDuration);
 
-  await step.run(`publish-success-${nodeId}`, async () => {
+  await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
     await publish(
       waitChannel().status({
         nodeId,

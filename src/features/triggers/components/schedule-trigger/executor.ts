@@ -6,14 +6,10 @@ import { scheduleTriggerChannel } from "@/inngest/channels/schedule-trigger";
 import { ScheduleTriggerFormValues } from "./dialog";
 import { toZonedTime, format } from "date-fns-tz";
 
-export const scheduleTriggerExecutor: NodeExecutor<ScheduleTriggerFormValues> = async ({
-  data,
-  nodeId,
-  context,
-  step,
-  publish,
-}) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+export const scheduleTriggerExecutor: NodeExecutor<
+  ScheduleTriggerFormValues
+> = async ({ data, nodeId, context, step, publish }) => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       scheduleTriggerChannel().status({
         nodeId,
@@ -27,11 +23,19 @@ export const scheduleTriggerExecutor: NodeExecutor<ScheduleTriggerFormValues> = 
 
   const zonedTime: Date = toZonedTime(now, timezone);
 
-  const triggeredAtLocal: string = format(zonedTime, "yyyy-MM-dd'T'HH:mm:ssXXX", {
+  const triggeredAtLocal: string = format(
+    zonedTime,
+    "yyyy-MM-dd'T'HH:mm:ssXXX",
+    {
+      timeZone: timezone,
+    }
+  );
+  const dateLocal: string = format(zonedTime, "yyyy-MM-dd", {
     timeZone: timezone,
   });
-  const dateLocal: string = format(zonedTime, "yyyy-MM-dd", { timeZone: timezone });
-  const timeLocal: string = format(zonedTime, "HH:mm:ss", { timeZone: timezone });
+  const timeLocal: string = format(zonedTime, "HH:mm:ss", {
+    timeZone: timezone,
+  });
 
   const result: WorkflowContext = await step.run(
     `schedule-trigger-${nodeId}`,
@@ -50,7 +54,7 @@ export const scheduleTriggerExecutor: NodeExecutor<ScheduleTriggerFormValues> = 
     }
   );
 
-  await step.run(`publish-success-${nodeId}`, async () => {
+  await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
     await publish(
       scheduleTriggerChannel().status({
         nodeId,
@@ -61,4 +65,3 @@ export const scheduleTriggerExecutor: NodeExecutor<ScheduleTriggerFormValues> = 
 
   return result;
 };
-

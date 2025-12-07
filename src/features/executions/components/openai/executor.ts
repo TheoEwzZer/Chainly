@@ -38,7 +38,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   publish,
   userId,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       openaiChannel().status({
         nodeId,
@@ -48,19 +48,22 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        openaiChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          openaiChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("OpenAI Node: Variable name is required");
   }
 
   if (!data.model) {
-    await step.run(`publish-error-model-${nodeId}`, async () => {
+    await step.run(`publish-error-model-${nodeId}`, async (): Promise<void> => {
       await publish(
         openaiChannel().status({
           nodeId,
@@ -72,26 +75,32 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   }
 
   if (!data.userPrompt) {
-    await step.run(`publish-error-prompt-${nodeId}`, async () => {
-      await publish(
-        openaiChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-prompt-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          openaiChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("OpenAI Node: User prompt is required");
   }
 
   if (!data.credentialId) {
-    await step.run(`publish-error-credential-${nodeId}`, async () => {
-      await publish(
-        openaiChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          openaiChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("OpenAI Node: Credential is required");
   }
 
@@ -108,14 +117,17 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
   );
 
   if (!credential) {
-    await step.run(`publish-error-credential-not-found-${nodeId}`, async () => {
-      await publish(
-        openaiChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-not-found-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          openaiChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("OpenAI Node: Credential not found");
   }
 
@@ -148,7 +160,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
 
     const text: string = textContent ? textContent.text : "";
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         openaiChannel().status({
           nodeId,
@@ -164,7 +176,7 @@ export const openaiExecutor: NodeExecutor<OpenAIFormValues> = async ({
       },
     };
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         openaiChannel().status({
           nodeId,

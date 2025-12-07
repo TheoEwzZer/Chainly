@@ -53,7 +53,7 @@ export const switchExecutor: NodeExecutor<SwitchFormValues> = async ({
   step,
   publish,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       switchChannel().status({
         nodeId,
@@ -63,31 +63,37 @@ export const switchExecutor: NodeExecutor<SwitchFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        switchChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          switchChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Switch Node: Variable name is required");
   }
 
   if (!data.expression) {
-    await step.run(`publish-error-expression-${nodeId}`, async () => {
-      await publish(
-        switchChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-expression-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          switchChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Switch Node: Expression is required");
   }
 
   if (!data.cases || data.cases.length === 0) {
-    await step.run(`publish-error-cases-${nodeId}`, async () => {
+    await step.run(`publish-error-cases-${nodeId}`, async (): Promise<void> => {
       await publish(
         switchChannel().status({
           nodeId,
@@ -117,8 +123,8 @@ export const switchExecutor: NodeExecutor<SwitchFormValues> = async ({
         const selectedOutput: string | null = matchResult
           ? `case-${matchResult.matchedIndex}`
           : hasDefault
-            ? "default"
-            : null;
+          ? "default"
+          : null;
 
         return {
           ...context,
@@ -133,7 +139,7 @@ export const switchExecutor: NodeExecutor<SwitchFormValues> = async ({
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         switchChannel().status({
           nodeId,
@@ -144,7 +150,7 @@ export const switchExecutor: NodeExecutor<SwitchFormValues> = async ({
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         switchChannel().status({
           nodeId,

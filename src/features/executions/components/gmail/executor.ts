@@ -434,7 +434,7 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
   publish,
   userId,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       gmailChannel().status({
         nodeId,
@@ -444,34 +444,43 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        gmailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          gmailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Gmail Node: Variable name is required");
   }
 
   if (!data.credentialId) {
-    await step.run(`publish-error-credential-${nodeId}`, async () => {
-      await publish(
-        gmailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          gmailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Gmail Node: Credential is required");
   }
 
   let accessToken: string;
   try {
-    accessToken = await step.run(`get-valid-token-${nodeId}`, async () => {
-      return await getValidGmailAccessToken(data.credentialId, userId);
-    });
+    accessToken = await step.run(
+      `get-valid-token-${nodeId}`,
+      async (): Promise<void> => {
+        return await getValidGmailAccessToken(data.credentialId, userId);
+      }
+    );
 
     const query: string = buildGmailQuery(data, context);
     const maxResults: number = data.maxResults || 50;
@@ -619,7 +628,7 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         gmailChannel().status({
           nodeId,
@@ -630,7 +639,7 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         gmailChannel().status({
           nodeId,

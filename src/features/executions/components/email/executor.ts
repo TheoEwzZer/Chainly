@@ -50,7 +50,7 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
   publish,
   userId,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       emailChannel().status({
         nodeId,
@@ -60,31 +60,37 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        emailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          emailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Email Node: Variable name is required");
   }
 
   if (!data.credentialId) {
-    await step.run(`publish-error-credential-${nodeId}`, async () => {
-      await publish(
-        emailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          emailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Email Node: Resend API key is required");
   }
 
   if (!data.from) {
-    await step.run(`publish-error-from-${nodeId}`, async () => {
+    await step.run(`publish-error-from-${nodeId}`, async (): Promise<void> => {
       await publish(
         emailChannel().status({
           nodeId,
@@ -96,7 +102,7 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
   }
 
   if (!data.to) {
-    await step.run(`publish-error-to-${nodeId}`, async () => {
+    await step.run(`publish-error-to-${nodeId}`, async (): Promise<void> => {
       await publish(
         emailChannel().status({
           nodeId,
@@ -108,19 +114,22 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
   }
 
   if (!data.subject) {
-    await step.run(`publish-error-subject-${nodeId}`, async () => {
-      await publish(
-        emailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-subject-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          emailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Email Node: Subject is required");
   }
 
   if (!data.body) {
-    await step.run(`publish-error-body-${nodeId}`, async () => {
+    await step.run(`publish-error-body-${nodeId}`, async (): Promise<void> => {
       await publish(
         emailChannel().status({
           nodeId,
@@ -144,14 +153,17 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
   );
 
   if (!credential) {
-    await step.run(`publish-error-credential-not-found-${nodeId}`, async () => {
-      await publish(
-        emailChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-not-found-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          emailChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Email Node: Credential not found");
   }
 
@@ -165,7 +177,8 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
 
     const renderedFrom: string = Handlebars.compile(fromTemplate)(context);
     const renderedTo: string = Handlebars.compile(toTemplate)(context);
-    const renderedSubject: string = Handlebars.compile(subjectTemplate)(context);
+    const renderedSubject: string =
+      Handlebars.compile(subjectTemplate)(context);
     const renderedBody: string = Handlebars.compile(bodyTemplate)(context);
 
     // Parse multiple recipients (comma-separated)
@@ -248,13 +261,15 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
           }
 
           throw new NonRetriableError(
-            `Email Node: Failed to send email. ${error.message || "Unknown error"}`
+            `Email Node: Failed to send email. ${
+              error.message || "Unknown error"
+            }`
           );
         }
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         emailChannel().status({
           nodeId,
@@ -265,7 +280,7 @@ export const emailExecutor: NodeExecutor<EmailFormValues> = async ({
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         emailChannel().status({
           nodeId,

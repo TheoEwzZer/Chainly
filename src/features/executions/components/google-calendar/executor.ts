@@ -8,7 +8,12 @@ import { googleCalendarChannel } from "@/inngest/channels/google-calendar";
 import { GoogleCalendarFormValues } from "./dialog";
 import { getValidAccessToken } from "@/lib/google-calendar-token";
 import ky from "ky";
-import { toZonedTime, format, fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import {
+  toZonedTime,
+  format,
+  fromZonedTime,
+  formatInTimeZone,
+} from "date-fns-tz";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -35,7 +40,7 @@ const transformBracketNotation = (template: string): string => {
 export const googleCalendarExecutor: NodeExecutor<
   GoogleCalendarFormValues
 > = async ({ data, nodeId, context, step, publish, userId }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       googleCalendarChannel().status({
         nodeId,
@@ -45,36 +50,45 @@ export const googleCalendarExecutor: NodeExecutor<
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        googleCalendarChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          googleCalendarChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError(
       "Google Calendar Node: Variable name is required"
     );
   }
 
   if (!data.credentialId) {
-    await step.run(`publish-error-credential-${nodeId}`, async () => {
-      await publish(
-        googleCalendarChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-credential-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          googleCalendarChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Google Calendar Node: Credential is required");
   }
 
   let accessToken: string;
   try {
-    accessToken = await step.run(`get-valid-token-${nodeId}`, async () => {
-      return await getValidAccessToken(data.credentialId, userId);
-    });
+    accessToken = await step.run(
+      `get-valid-token-${nodeId}`,
+      async (): Promise<void> => {
+        return await getValidAccessToken(data.credentialId, userId);
+      }
+    );
 
     const calendarIdTemplate: string = transformBracketNotation(
       data.calendarId || "primary"
@@ -94,14 +108,17 @@ export const googleCalendarExecutor: NodeExecutor<
     let targetDateStr: string;
     if (renderedDate) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(renderedDate)) {
-        await step.run(`publish-error-date-${nodeId}`, async () => {
-          await publish(
-            googleCalendarChannel().status({
-              nodeId,
-              status: "error",
-            })
-          );
-        });
+        await step.run(
+          `publish-error-date-${nodeId}`,
+          async (): Promise<void> => {
+            await publish(
+              googleCalendarChannel().status({
+                nodeId,
+                status: "error",
+              })
+            );
+          }
+        );
         throw new NonRetriableError(
           "Google Calendar Node: Invalid date format. Use YYYY-MM-DD format."
         );
@@ -112,8 +129,14 @@ export const googleCalendarExecutor: NodeExecutor<
       targetDateStr = format(nowInTz, "yyyy-MM-dd", { timeZone: timezone });
     }
 
-    const startOfDayUtc: Date = fromZonedTime(`${targetDateStr} 00:00:00`, timezone);
-    const endOfDayUtc: Date = fromZonedTime(`${targetDateStr} 23:59:59`, timezone);
+    const startOfDayUtc: Date = fromZonedTime(
+      `${targetDateStr} 00:00:00`,
+      timezone
+    );
+    const endOfDayUtc: Date = fromZonedTime(
+      `${targetDateStr} 23:59:59`,
+      timezone
+    );
 
     const timeMinStr: string = formatInTimeZone(
       startOfDayUtc,
@@ -179,7 +202,7 @@ export const googleCalendarExecutor: NodeExecutor<
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         googleCalendarChannel().status({
           nodeId,
@@ -190,7 +213,7 @@ export const googleCalendarExecutor: NodeExecutor<
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         googleCalendarChannel().status({
           nodeId,

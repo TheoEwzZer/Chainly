@@ -12,7 +12,7 @@ export type GitHubTriggerExecutorData = {
 export const githubTriggerExecutor: NodeExecutor<
   GitHubTriggerExecutorData
 > = async ({ nodeId, context, step, publish }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       githubTriggerChannel().status({
         nodeId,
@@ -26,7 +26,7 @@ export const githubTriggerExecutor: NodeExecutor<
     async (): Promise<WorkflowContext> => context
   );
 
-  await step.run(`publish-success-${nodeId}`, async () => {
+  await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
     await publish(
       githubTriggerChannel().status({
         nodeId,
@@ -37,4 +37,3 @@ export const githubTriggerExecutor: NodeExecutor<
 
   return result;
 };
-

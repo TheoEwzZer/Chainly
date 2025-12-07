@@ -13,14 +13,10 @@ export interface ErrorHandlerResult {
   failedNodeIds: string[];
 }
 
-export const errorHandlerExecutor: NodeExecutor<ErrorHandlerFormValues> = async ({
-  data,
-  nodeId,
-  context,
-  step,
-  publish,
-}) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+export const errorHandlerExecutor: NodeExecutor<
+  ErrorHandlerFormValues
+> = async ({ data, nodeId, context, step, publish }) => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       errorHandlerChannel().status({
         nodeId,
@@ -54,7 +50,7 @@ export const errorHandlerExecutor: NodeExecutor<ErrorHandlerFormValues> = async 
     }
   );
 
-  await step.run(`publish-success-${nodeId}`, async () => {
+  await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
     await publish(
       errorHandlerChannel().status({
         nodeId,

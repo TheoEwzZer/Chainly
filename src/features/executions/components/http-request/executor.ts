@@ -102,7 +102,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
   step,
   publish,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       httpRequestChannel().status({
         nodeId,
@@ -112,38 +112,47 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
   });
 
   if (!data.endpoint) {
-    await step.run(`publish-error-endpoint-${nodeId}`, async () => {
-      await publish(
-        httpRequestChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-endpoint-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          httpRequestChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("HTTP Request Node: Endpoint is required");
   }
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        httpRequestChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          httpRequestChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("HTTP Request Node: Variable name is required");
   }
 
   if (!data.method) {
-    await step.run(`publish-error-method-${nodeId}`, async () => {
-      await publish(
-        httpRequestChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-method-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          httpRequestChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("HTTP Request Node: Method is required");
   }
 
@@ -213,7 +222,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         httpRequestChannel().status({
           nodeId,
@@ -224,7 +233,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestFormValues> = async ({
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         httpRequestChannel().status({
           nodeId,

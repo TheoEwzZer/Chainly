@@ -45,7 +45,7 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
   step,
   publish,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       loopChannel().status({
         nodeId,
@@ -55,19 +55,22 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        loopChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          loopChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Loop Node: Variable name is required");
   }
 
   if (!data.arrayPath) {
-    await step.run(`publish-error-array-${nodeId}`, async () => {
+    await step.run(`publish-error-array-${nodeId}`, async (): Promise<void> => {
       await publish(
         loopChannel().status({
           nodeId,
@@ -79,7 +82,7 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
   }
 
   if (!data.itemVariableName) {
-    await step.run(`publish-error-item-${nodeId}`, async () => {
+    await step.run(`publish-error-item-${nodeId}`, async (): Promise<void> => {
       await publish(
         loopChannel().status({
           nodeId,
@@ -149,14 +152,17 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
     }
 
     if (!Array.isArray(array)) {
-      await step.run(`publish-error-not-array-${nodeId}`, async () => {
-        await publish(
-          loopChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-not-array-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            loopChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
 
       const contextKeys: string[] = Object.keys(context || {});
       const availablePaths: string =
@@ -174,14 +180,17 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
     }
 
     if (array.length === 0) {
-      await step.run(`publish-success-empty-${nodeId}`, async () => {
-        await publish(
-          loopChannel().status({
-            nodeId,
-            status: "success",
-          })
-        );
-      });
+      await step.run(
+        `publish-success-empty-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            loopChannel().status({
+              nodeId,
+              status: "success",
+            })
+          );
+        }
+      );
 
       return {
         ...context,
@@ -193,7 +202,7 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
       };
     }
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         loopChannel().status({
           nodeId,
@@ -215,7 +224,7 @@ export const loopExecutor: NodeExecutor<LoopFormValues> = async ({
       },
     };
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         loopChannel().status({
           nodeId,

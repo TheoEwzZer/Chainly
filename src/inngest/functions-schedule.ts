@@ -151,7 +151,11 @@ export const checkSchedules = inngest.createFunction(
       const timezone: string = data.timezone || "UTC";
 
       if (data.scheduleMode === "cron" && data.cronExpression) {
-        const cronMatches: boolean = matchesCron(data.cronExpression, now, timezone);
+        const cronMatches: boolean = matchesCron(
+          data.cronExpression,
+          now,
+          timezone
+        );
 
         if (cronMatches) {
           const lastExecution: Date | null = data.lastExecution
@@ -181,7 +185,8 @@ export const checkSchedules = inngest.createFunction(
 
         const nowInTz: Date = toZonedTime(now, timezone);
 
-        const nowMinutes: number = nowInTz.getHours() * 60 + nowInTz.getMinutes();
+        const nowMinutes: number =
+          nowInTz.getHours() * 60 + nowInTz.getMinutes();
         const scheduledMinutes: number = hours * 60 + minutes;
         const nowDateStr = `${nowInTz.getFullYear()}-${String(
           nowInTz.getMonth() + 1
@@ -217,22 +222,25 @@ export const checkSchedules = inngest.createFunction(
       }
 
       if (shouldTrigger) {
-        await step.run(`trigger-workflow-${node.id}`, async () => {
-          await sendWorkflowExecution({
-            workflowId: node.workflowId,
-            triggerNodeId: node.id,
-          });
+        await step.run(
+          `trigger-workflow-${node.id}`,
+          async (): Promise<void> => {
+            await sendWorkflowExecution({
+              workflowId: node.workflowId,
+              triggerNodeId: node.id,
+            });
 
-          await prisma.node.update({
-            where: { id: node.id },
-            data: {
+            await prisma.node.update({
+              where: { id: node.id },
               data: {
-                ...data,
-                lastExecution: now.toISOString(),
+                data: {
+                  ...data,
+                  lastExecution: now.toISOString(),
+                },
               },
-            },
-          });
-        });
+            });
+          }
+        );
       }
     }
   }

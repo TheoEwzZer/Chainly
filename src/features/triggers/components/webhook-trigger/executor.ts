@@ -12,7 +12,7 @@ export type WebhookTriggerExecutorData = {
 export const webhookTriggerExecutor: NodeExecutor<
   WebhookTriggerExecutorData
 > = async ({ nodeId, context, step, publish }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       webhookTriggerChannel().status({
         nodeId,
@@ -26,7 +26,7 @@ export const webhookTriggerExecutor: NodeExecutor<
     async (): Promise<WorkflowContext> => context
   );
 
-  await step.run(`publish-success-${nodeId}`, async () => {
+  await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
     await publish(
       webhookTriggerChannel().status({
         nodeId,
@@ -37,4 +37,3 @@ export const webhookTriggerExecutor: NodeExecutor<
 
   return result;
 };
-

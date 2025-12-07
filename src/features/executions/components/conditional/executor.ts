@@ -36,7 +36,7 @@ export const conditionalExecutor: NodeExecutor<ConditionalFormValues> = async ({
   step,
   publish,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       conditionalChannel().status({
         nodeId,
@@ -46,26 +46,32 @@ export const conditionalExecutor: NodeExecutor<ConditionalFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        conditionalChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          conditionalChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Conditional Node: Variable name is required");
   }
 
   if (!data.condition) {
-    await step.run(`publish-error-condition-${nodeId}`, async () => {
-      await publish(
-        conditionalChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-condition-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          conditionalChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Conditional Node: Condition is required");
   }
 
@@ -88,7 +94,7 @@ export const conditionalExecutor: NodeExecutor<ConditionalFormValues> = async ({
       }
     );
 
-    await step.run(`publish-success-${nodeId}`, async () => {
+    await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
       await publish(
         conditionalChannel().status({
           nodeId,
@@ -99,7 +105,7 @@ export const conditionalExecutor: NodeExecutor<ConditionalFormValues> = async ({
 
     return result;
   } catch (error) {
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         conditionalChannel().status({
           nodeId,

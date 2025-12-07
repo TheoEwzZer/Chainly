@@ -41,7 +41,7 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
   publish,
   userId,
 }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       discordChannel().status({
         nodeId,
@@ -51,26 +51,32 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        discordChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          discordChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Discord Node: Variable name is required");
   }
 
   if (!data.content) {
-    await step.run(`publish-error-content-${nodeId}`, async () => {
-      await publish(
-        discordChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-content-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          discordChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Discord Node: Message content is required");
   }
 
@@ -78,14 +84,17 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
 
   if (mode === "webhook") {
     if (!data.webhookUrl) {
-      await step.run(`publish-error-webhook-${nodeId}`, async () => {
-        await publish(
-          discordChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-webhook-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            discordChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
       throw new NonRetriableError("Discord Node: Webhook URL is required");
     }
 
@@ -134,7 +143,7 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
         }
       );
 
-      await step.run(`publish-success-${nodeId}`, async () => {
+      await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
         await publish(
           discordChannel().status({
             nodeId,
@@ -145,40 +154,49 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
 
       return result;
     } catch (error) {
-      await step.run(`publish-error-final-${nodeId}`, async () => {
-        await publish(
-          discordChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-final-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            discordChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
       throw error;
     }
   } else {
     if (!data.credentialId) {
-      await step.run(`publish-error-credential-${nodeId}`, async () => {
-        await publish(
-          discordChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-credential-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            discordChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
       throw new NonRetriableError(
         "Discord Node: Bot token credential is required"
       );
     }
 
     if (!data.userId) {
-      await step.run(`publish-error-userid-${nodeId}`, async () => {
-        await publish(
-          discordChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-userid-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            discordChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
       throw new NonRetriableError("Discord Node: Discord user ID is required");
     }
 
@@ -309,7 +327,7 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
         }
       );
 
-      await step.run(`publish-success-${nodeId}`, async () => {
+      await step.run(`publish-success-${nodeId}`, async (): Promise<void> => {
         await publish(
           discordChannel().status({
             nodeId,
@@ -320,14 +338,17 @@ export const discordExecutor: NodeExecutor<DiscordFormValues> = async ({
 
       return result;
     } catch (error) {
-      await step.run(`publish-error-final-${nodeId}`, async () => {
-        await publish(
-          discordChannel().status({
-            nodeId,
-            status: "error",
-          })
-        );
-      });
+      await step.run(
+        `publish-error-final-${nodeId}`,
+        async (): Promise<void> => {
+          await publish(
+            discordChannel().status({
+              nodeId,
+              status: "error",
+            })
+          );
+        }
+      );
       throw error;
     }
   }

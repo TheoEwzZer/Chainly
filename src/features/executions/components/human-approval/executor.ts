@@ -41,7 +41,7 @@ export class PauseExecutionError extends Error {
 export const humanApprovalExecutor: NodeExecutor<
   HumanApprovalFormValues
 > = async ({ data, nodeId, context, step, publish, userId, executionId }) => {
-  await step.run(`publish-loading-${nodeId}`, async () => {
+  await step.run(`publish-loading-${nodeId}`, async (): Promise<void> => {
     await publish(
       humanApprovalChannel().status({
         nodeId,
@@ -51,28 +51,34 @@ export const humanApprovalExecutor: NodeExecutor<
   });
 
   if (!data.variableName) {
-    await step.run(`publish-error-variable-${nodeId}`, async () => {
-      await publish(
-        humanApprovalChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-variable-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          humanApprovalChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError(
       "Human Approval Node: Variable name is required"
     );
   }
 
   if (!data.message) {
-    await step.run(`publish-error-message-${nodeId}`, async () => {
-      await publish(
-        humanApprovalChannel().status({
-          nodeId,
-          status: "error",
-        })
-      );
-    });
+    await step.run(
+      `publish-error-message-${nodeId}`,
+      async (): Promise<void> => {
+        await publish(
+          humanApprovalChannel().status({
+            nodeId,
+            status: "error",
+          })
+        );
+      }
+    );
     throw new NonRetriableError("Human Approval Node: Message is required");
   }
 
@@ -81,20 +87,23 @@ export const humanApprovalExecutor: NodeExecutor<
     const renderedMessage: string =
       Handlebars.compile(messageTemplate)(context);
 
-    const approval = await step.run(`create-approval-${nodeId}`, async () => {
-      return await prisma.approval.create({
-        data: {
-          executionId: executionId,
-          nodeId: nodeId,
-          userId: userId,
-          status: ApprovalStatus.PENDING,
-          message: renderedMessage,
-          context: context as any,
-        },
-      });
-    });
+    const approval = await step.run(
+      `create-approval-${nodeId}`,
+      async (): Promise<void> => {
+        return await prisma.approval.create({
+          data: {
+            executionId: executionId,
+            nodeId: nodeId,
+            userId: userId,
+            status: ApprovalStatus.PENDING,
+            message: renderedMessage,
+            context: context as any,
+          },
+        });
+      }
+    );
 
-    await step.run(`pause-execution-${nodeId}`, async () => {
+    await step.run(`pause-execution-${nodeId}`, async (): Promise<void> => {
       await prisma.execution.update({
         where: { id: executionId },
         data: {
@@ -103,7 +112,7 @@ export const humanApprovalExecutor: NodeExecutor<
       });
     });
 
-    await step.run(`publish-waiting-${nodeId}`, async () => {
+    await step.run(`publish-waiting-${nodeId}`, async (): Promise<void> => {
       await publish(
         humanApprovalChannel().status({
           nodeId,
@@ -118,7 +127,7 @@ export const humanApprovalExecutor: NodeExecutor<
       throw error;
     }
 
-    await step.run(`publish-error-final-${nodeId}`, async () => {
+    await step.run(`publish-error-final-${nodeId}`, async (): Promise<void> => {
       await publish(
         humanApprovalChannel().status({
           nodeId,
