@@ -22,6 +22,7 @@ import { conditionalExecutor } from "../components/conditional/executor";
 import { switchExecutor } from "../components/switch/executor";
 import { emailExecutor } from "../components/email/executor";
 import { errorHandlerExecutor } from "../components/error-handler/executor";
+import { waitExecutor } from "../components/wait/executor";
 
 const initialExecutor: NodeExecutor<Record<string, unknown>> = async ({
   context,
@@ -49,6 +50,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor<any>> = {
   [NodeType.SWITCH]: switchExecutor,
   [NodeType.EMAIL]: emailExecutor,
   [NodeType.ERROR_HANDLER]: errorHandlerExecutor,
+  [NodeType.WAIT]: waitExecutor,
 } as const;
 
 export const getExecutor = (nodeType: NodeType): NodeExecutor<any> => {

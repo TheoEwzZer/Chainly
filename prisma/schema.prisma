@@ -133,6 +133,7 @@ enum NodeType {
   SWITCH
   EMAIL
   ERROR_HANDLER
+  WAIT
 }
 
 model Node {

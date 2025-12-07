@@ -9,6 +9,7 @@ import {
   MousePointerIcon,
   Repeat,
   ShieldAlert,
+  Timer,
   WebhookIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -142,5 +143,12 @@ export const executionNodes: NodeTypeOption[] = [
     description:
       "Check if the previous node(s) failed and route the workflow to success or error paths.",
     icon: ShieldAlert,
+  },
+  {
+    type: NodeType.WAIT,
+    label: "Wait",
+    description:
+      "Pause the workflow for a specified duration before continuing.",
+    icon: Timer,
   },
 ];
