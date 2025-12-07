@@ -81,7 +81,10 @@ export const BaseNodeContent = forwardRef<
   <div
     ref={ref}
     data-slot="base-node-content"
-    className={cn("flex flex-col gap-y-2 p-3", className)}
+    className={cn(
+      "flex flex-col gap-y-2 p-3 aspect-square justify-center",
+      className
+    )}
     {...props}
   />
 ));

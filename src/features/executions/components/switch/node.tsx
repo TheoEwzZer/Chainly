@@ -99,7 +99,7 @@ export const SwitchNode = memo(
           <NodeStatusIndicator status={nodeStatus} variant="border">
             <BaseNode status={nodeStatus} onDoubleClick={handleSettings}>
               <BaseNodeContent
-                className="relative justify-center"
+                className="relative justify-center aspect-auto"
                 style={{ minHeight: `${Math.max(totalHeight + 16, 24)}px` }}
               >
                 <div className="flex items-center justify-center">
