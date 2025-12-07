@@ -3,10 +3,12 @@ import {
   ArrowLeftRight,
   Check,
   ClockIcon,
+  Code2,
   GlobeIcon,
   GitBranch,
   MailIcon,
   MousePointerIcon,
+  PenLine,
   Repeat,
   ShieldAlert,
   Timer,
@@ -150,5 +152,19 @@ export const executionNodes: NodeTypeOption[] = [
     description:
       "Pause the workflow for a specified duration before continuing.",
     icon: Timer,
+  },
+  {
+    type: NodeType.SET,
+    label: "Set",
+    description:
+      "Transform and create new data by defining key-value pairs with expressions.",
+    icon: PenLine,
+  },
+  {
+    type: NodeType.CODE,
+    label: "Code",
+    description:
+      "Execute custom JavaScript code to transform data or perform complex logic.",
+    icon: Code2,
   },
 ];

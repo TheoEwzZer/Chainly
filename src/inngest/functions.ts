@@ -36,6 +36,8 @@ import { switchChannel } from "./channels/switch";
 import { emailChannel } from "./channels/email";
 import { errorHandlerChannel } from "./channels/error-handler";
 import { waitChannel } from "./channels/wait";
+import { setChannel } from "./channels/set";
+import { codeChannel } from "./channels/code";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
 import type { ErrorHandlerResult } from "@/features/executions/components/error-handler/executor";
 import { NodeType } from "@/generated/prisma/enums";
@@ -80,6 +82,10 @@ const getChannelForNodeType = (nodeType: NodeType) => {
       return errorHandlerChannel();
     case NodeType.WAIT:
       return waitChannel();
+    case NodeType.SET:
+      return setChannel();
+    case NodeType.CODE:
+      return codeChannel();
     case NodeType.INITIAL:
     default:
       return null; // INITIAL nodes don't have status channels
@@ -124,6 +130,8 @@ export const executeWorkflow = inngest.createFunction(
       emailChannel(),
       errorHandlerChannel(),
       waitChannel(),
+      setChannel(),
+      codeChannel(),
     ],
   },
   async ({ event, step, publish }) => {

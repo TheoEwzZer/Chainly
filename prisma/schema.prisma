@@ -134,6 +134,8 @@ enum NodeType {
   EMAIL
   ERROR_HANDLER
   WAIT
+  SET
+  CODE
 }
 
 model Node {

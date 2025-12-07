@@ -20,6 +20,8 @@ import { SwitchNode } from "@/features/executions/components/switch/node";
 import { EmailNode } from "@/features/executions/components/email/node";
 import { ErrorHandlerNode } from "@/features/executions/components/error-handler/node";
 import { WaitNode } from "@/features/executions/components/wait/node";
+import { SetNode } from "@/features/executions/components/set/node";
+import { CodeNode } from "@/features/executions/components/code/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -42,6 +44,8 @@ export const nodeComponents = {
   [NodeType.EMAIL]: EmailNode,
   [NodeType.ERROR_HANDLER]: ErrorHandlerNode,
   [NodeType.WAIT]: WaitNode,
+  [NodeType.SET]: SetNode,
+  [NodeType.CODE]: CodeNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;
