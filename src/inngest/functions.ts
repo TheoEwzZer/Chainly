@@ -34,7 +34,9 @@ import { loopChannel } from "./channels/loop";
 import { conditionalChannel } from "./channels/conditional";
 import { switchChannel } from "./channels/switch";
 import { emailChannel } from "./channels/email";
+import { errorHandlerChannel } from "./channels/error-handler";
 import { PauseExecutionError } from "@/features/executions/components/human-approval/executor";
+import type { ErrorHandlerResult } from "@/features/executions/components/error-handler/executor";
 import { NodeType } from "@/generated/prisma/enums";
 
 const getChannelForNodeType = (nodeType: NodeType) => {
@@ -73,6 +75,8 @@ const getChannelForNodeType = (nodeType: NodeType) => {
       return switchChannel();
     case NodeType.EMAIL:
       return emailChannel();
+    case NodeType.ERROR_HANDLER:
+      return errorHandlerChannel();
     case NodeType.INITIAL:
     default:
       return null; // INITIAL nodes don't have status channels
@@ -115,6 +119,7 @@ export const executeWorkflow = inngest.createFunction(
       conditionalChannel(),
       switchChannel(),
       emailChannel(),
+      errorHandlerChannel(),
     ],
   },
   async ({ event, step, publish }) => {
@@ -242,6 +247,10 @@ export const executeWorkflow = inngest.createFunction(
       string,
       { selectedOutput: string | null; variableName: string }
     >();
+    const errorHandlerResults = new Map<
+      string,
+      { hasError: boolean; variableName: string }
+    >();
 
     let startIndex: number = 0;
     if (resumeFromNodeId) {
@@ -324,6 +333,20 @@ export const executeWorkflow = inngest.createFunction(
             continue;
           }
 
+          const errorHandlerResult:
+            | { hasError: boolean; variableName: string }
+            | undefined = errorHandlerResults.get(connection.fromNodeId);
+          if (errorHandlerResult) {
+            hasBranchingConnection = true;
+            const expectedOutput: "success" | "error" =
+              errorHandlerResult.hasError ? "error" : "success";
+            if (connection.fromOutput === expectedOutput) {
+              hasValidConnection = true;
+              break;
+            }
+            continue;
+          }
+
           hasValidConnection = true;
           break;
         }
@@ -347,13 +370,15 @@ export const executeWorkflow = inngest.createFunction(
         continue;
       }
 
-      const shouldSkip: boolean = hasFailedPredecessor(
+      const hasFailedPredecessorNode: boolean = hasFailedPredecessor(
         node.id,
         connections as unknown as Connection[],
         failedNodeIds
       );
 
-      if (shouldSkip) {
+      const isErrorHandler: boolean = node.type === NodeType.ERROR_HANDLER;
+
+      if (hasFailedPredecessorNode && !isErrorHandler) {
         await prisma.executionStep.upsert({
           where: {
             executionId_order: {
@@ -387,6 +412,63 @@ export const executeWorkflow = inngest.createFunction(
         continue;
       }
 
+      let errorHandlerContext: WorkflowContext = currentContext;
+      if (isErrorHandler && hasFailedPredecessorNode) {
+        const predecessorNodeIds: string[] = (
+          connections as unknown as Connection[]
+        )
+          .filter((conn: Connection): boolean => conn.toNodeId === node.id)
+          .map((conn: Connection): string => conn.fromNodeId);
+
+        const failedPredecessorIds: string[] = predecessorNodeIds.filter(
+          (predId: string): boolean => failedNodeIds.has(predId)
+        );
+
+        const failedSteps = await step.run(
+          `get-failed-steps-${node.id}`,
+          async () => {
+            return await prisma.executionStep.findMany({
+              where: {
+                executionId: executionRecord.id,
+                nodeId: { in: failedPredecessorIds },
+                status: ExecutionStatus.FAILED,
+              },
+              select: {
+                nodeId: true,
+                error: true,
+                errorStack: true,
+              },
+            });
+          }
+        );
+
+        const firstFailedStep = failedSteps[0];
+        const errorInfo: ErrorHandlerResult = {
+          hasError: true,
+          error: firstFailedStep?.error || "Unknown error",
+          errorStack: firstFailedStep?.errorStack || null,
+          failedNodeId: firstFailedStep?.nodeId || null,
+          failedNodeIds: failedPredecessorIds,
+        };
+
+        errorHandlerContext = {
+          ...currentContext,
+          _errorHandlerInfo: errorInfo,
+        };
+      } else if (isErrorHandler) {
+        const successInfo: ErrorHandlerResult = {
+          hasError: false,
+          error: null,
+          errorStack: null,
+          failedNodeId: null,
+          failedNodeIds: [],
+        };
+        errorHandlerContext = {
+          ...currentContext,
+          _errorHandlerInfo: successInfo,
+        };
+      }
+
       const stepRecord: ExecutionStep = await prisma.executionStep.upsert({
         where: {
           executionId_order: {
@@ -417,10 +499,14 @@ export const executeWorkflow = inngest.createFunction(
 
       const executor: NodeExecutor = getExecutor(node.type);
       try {
+        const executorContext: WorkflowContext = isErrorHandler
+          ? errorHandlerContext
+          : currentContext;
+
         const result: WorkflowContext = await executor({
           data: node.data as Record<string, unknown>,
           nodeId: node.id,
-          context: currentContext,
+          context: executorContext,
           step,
           publish,
           userId,
@@ -471,6 +557,21 @@ export const executeWorkflow = inngest.createFunction(
               variableName: switchData.variableName,
             });
           }
+        }
+
+        if (node.type === NodeType.ERROR_HANDLER) {
+          const errorHandlerData = node.data as {
+            variableName?: string;
+          };
+          const variableName: string = errorHandlerData?.variableName || "errorHandler";
+          const errorHandlerResult = result[variableName] as {
+            hasError?: boolean;
+          };
+          const hasError: boolean = errorHandlerResult?.hasError ?? false;
+          errorHandlerResults.set(node.id, {
+            hasError,
+            variableName,
+          });
         }
 
         if (node.type === NodeType.LOOP) {

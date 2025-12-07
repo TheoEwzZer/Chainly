@@ -132,6 +132,7 @@ enum NodeType {
   CONDITIONAL
   SWITCH
   EMAIL
+  ERROR_HANDLER
 }
 
 model Node {

@@ -8,6 +8,7 @@ import {
   MailIcon,
   MousePointerIcon,
   Repeat,
+  ShieldAlert,
   WebhookIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -134,5 +135,12 @@ export const executionNodes: NodeTypeOption[] = [
     label: "Email",
     description: "Sends an email using Resend. Supports HTML and plain text.",
     icon: MailIcon,
+  },
+  {
+    type: NodeType.ERROR_HANDLER,
+    label: "Error Handler",
+    description:
+      "Check if the previous node(s) failed and route the workflow to success or error paths.",
+    icon: ShieldAlert,
   },
 ];

@@ -18,6 +18,7 @@ import { LoopNode } from "@/features/executions/components/loop/node";
 import { ConditionalNode } from "@/features/executions/components/conditional/node";
 import { SwitchNode } from "@/features/executions/components/switch/node";
 import { EmailNode } from "@/features/executions/components/email/node";
+import { ErrorHandlerNode } from "@/features/executions/components/error-handler/node";
 
 export const nodeComponents = {
   [NodeType.INITIAL]: InitialNode,
@@ -38,6 +39,7 @@ export const nodeComponents = {
   [NodeType.CONDITIONAL]: ConditionalNode,
   [NodeType.SWITCH]: SwitchNode,
   [NodeType.EMAIL]: EmailNode,
+  [NodeType.ERROR_HANDLER]: ErrorHandlerNode,
 } as const satisfies NodeTypes;
 
 export type RegisteredNodeTypes = keyof typeof nodeComponents;
