@@ -477,7 +477,7 @@ export const gmailExecutor: NodeExecutor<GmailFormValues> = async ({
   try {
     accessToken = await step.run(
       `get-valid-token-${nodeId}`,
-      async (): Promise<void> => {
+      async (): Promise<string> => {
         return await getValidGmailAccessToken(data.credentialId, userId);
       }
     );
