@@ -2,7 +2,7 @@
 
 import { useInngestSubscription } from "@inngest/realtime/hooks";
 import { Realtime } from "@inngest/realtime";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, RefObject } from "react";
 import { NodeStatus } from "@/components/react-flow/node-status-indicator";
 
 type NodeStatusMessage =
@@ -11,6 +11,7 @@ type NodeStatusMessage =
 interface CountdownData {
   startedAt: string;
   durationMs: number;
+  messageCreatedAt: Date;
 }
 
 interface UseWaitCountdownOptions {
@@ -48,12 +49,20 @@ const formatRemainingTime = (ms: number): string => {
   return `${seconds}s`;
 };
 
+interface CountdownSyncPoint {
+  startedAt: string;
+  clientReceivedAt: number;
+  countdownData: CountdownData;
+}
+
 export function useWaitCountdown({
   nodeId,
   channel,
   refreshToken,
 }: UseWaitCountdownOptions): UseWaitCountdownResult {
   const [now, setNow] = useState<number>((): number => Date.now());
+  const [syncPoint, setSyncPoint] = useState<CountdownSyncPoint | null>(null);
+  const lastStartedAtRef: RefObject<string | null> = useRef<string | null>(null);
 
   const { data } = useInngestSubscription({
     refreshToken,
@@ -115,23 +124,50 @@ export function useWaitCountdown({
       return {
         startedAt: latestCountdownMessage.data.startedAt as string,
         durationMs: latestCountdownMessage.data.durationMs as number,
+        messageCreatedAt: latestCountdownMessage.createdAt,
       };
     }
 
     return null;
   }, [data, channel, nodeId]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!countdownData) {
+      if (lastStartedAtRef.current !== null) {
+        lastStartedAtRef.current = null;
+        setSyncPoint(null);
+      }
+      return;
+    }
+
+    if (lastStartedAtRef.current !== countdownData.startedAt) {
+      lastStartedAtRef.current = countdownData.startedAt;
+      setSyncPoint({
+        startedAt: countdownData.startedAt,
+        clientReceivedAt: Date.now(),
+        countdownData,
+      });
+    }
+  }, [countdownData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const remainingMs: number | null = useMemo((): number | null => {
-    if (!countdownData || status !== "loading") {
+    if (!syncPoint || status !== "loading") {
       return null;
     }
 
-    const startTime: number = new Date(countdownData.startedAt).getTime();
-    const endTime: number = startTime + countdownData.durationMs;
-    const remaining: number = endTime - now;
+    const serverStartTime: number = new Date(syncPoint.startedAt).getTime();
+    const serverMessageTime: number =
+      syncPoint.countdownData.messageCreatedAt.getTime();
+    const serverElapsedAtMessage: number = serverMessageTime - serverStartTime;
+    const remainingAtMessage: number =
+      syncPoint.countdownData.durationMs - serverElapsedAtMessage;
+    const clientElapsed: number = now - syncPoint.clientReceivedAt;
+    const remaining: number = remainingAtMessage - clientElapsed;
 
     return Math.max(0, remaining);
-  }, [countdownData, status, now]);
+  }, [syncPoint, status, now]);
 
   useEffect(() => {
     if (status !== "loading" || !countdownData) {
