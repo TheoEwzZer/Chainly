@@ -5,6 +5,7 @@ import { humanApprovalChannel } from "@/inngest/channels/human-approval";
 import { HumanApprovalFormValues } from "./dialog";
 import prisma from "@/lib/db";
 import { ApprovalStatus, ExecutionStatus } from "@/generated/prisma/enums";
+import type { Approval } from "@/generated/prisma/client";
 
 Handlebars.registerHelper("json", (context: any): SafeString => {
   const jsonString: string = JSON.stringify(context, null, 2);
@@ -89,7 +90,7 @@ export const humanApprovalExecutor: NodeExecutor<
 
     const approval = await step.run(
       `create-approval-${nodeId}`,
-      async (): Promise<void> => {
+      async (): Promise<Approval> => {
         return await prisma.approval.create({
           data: {
             executionId: executionId,
